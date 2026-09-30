@@ -85,19 +85,26 @@ def _kiraci_temizle(con, k: Kiraci) -> None:
 def iki_kiraci(admin_engine):
     """İki bağımsız işletme: her birinin bir sahibi ve bir müşterisi var. Test sonunda silinir."""
     with admin_engine.begin() as con:
+        con.execute(text("SET LOCAL lock_timeout = '10s'"))     # kilitlenmede asılı kalma, hatayla düş
         a = _kiraci_olustur(con, "A")
         b = _kiraci_olustur(con, "B")
     try:
         yield a, b
     finally:
         with admin_engine.begin() as con:
+            con.execute(text("SET LOCAL lock_timeout = '10s'"))
             _kiraci_temizle(con, a)
             _kiraci_temizle(con, b)
 
 
 @pytest.fixture()
-def oturum():
+def oturum(request):
     """Uygulamanın gerçek SessionLocal'ından oturum üretir; kiraci verilirse kiracı bağlamı ayarlanır."""
+    # Test iki_kiraci'yi de istiyorsa önce o kurulur: pytest ters sırada temizlediği için oturumlar,
+    # iki_kiraci'nin DELETE'lerinden ÖNCE kapanır (açık işlem FK kilidini tutup temizliği kilitlemez).
+    if "iki_kiraci" in request.fixturenames:
+        request.getfixturevalue("iki_kiraci")
+
     from database import SessionLocal
 
     acilanlar = []
