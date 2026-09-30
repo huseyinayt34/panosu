@@ -8,3 +8,4 @@ __pycache__/
 test_sonucu.txt
 *.pyc
 _*alan*.py
+veri/

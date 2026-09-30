@@ -2,35 +2,53 @@
 
 Testler İZOLE bir veritabanında çalışır (adı '_test' ile bitmelidir), çünkü veri ekler ve siler.
 
-Gerekli ortam değişkenleri:
+Bağlantı adresleri:
   PANOSU_TEST_APP_URL    -> panosu_app rolüyle bağlantı (RLS'ye tabi; uygulamanın gerçek rolü)
   PANOSU_TEST_ADMIN_URL  -> SÜPERKULLANICI (postgres) bağlantısı; test verisini RLS'yi atlayarak kurar/temizler
+Ortamda tanımlı değillerse .env'deki PANOSU_VERITABANI_URL / PANOSU_MIGRASYON_URL'den, yalnızca veritabanı
+adı TEST_VERITABANI yapılarak türetilir. Ortam değişkeni her zaman önceliklidir.
 """
 
 import os
 import uuid
 from dataclasses import dataclass
+from pathlib import Path
 
 import pytest
+from dotenv import dotenv_values
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
+
+TEST_VERITABANI = "panosu_test"
+_ENV_DOSYASI = Path(__file__).resolve().parent.parent / ".env"
+
+
+def _test_adresi(ortam_degiskeni: str, env_anahtari: str) -> str | None:
+    if os.environ.get(ortam_degiskeni):
+        return os.environ[ortam_degiskeni]
+    kaynak = dotenv_values(_ENV_DOSYASI).get(env_anahtari)
+    if not kaynak:
+        return None
+    return make_url(kaynak).set(database=TEST_VERITABANI).render_as_string(hide_password=False)
 
 
 def pytest_configure(config):
     """Uygulama modülleri import edilmeden ÖNCE çalışır: ayarları test veritabanına yönlendirir."""
-    app_url = os.environ.get("PANOSU_TEST_APP_URL")
-    admin_url = os.environ.get("PANOSU_TEST_ADMIN_URL")
+    app_url = _test_adresi("PANOSU_TEST_APP_URL", "PANOSU_VERITABANI_URL")
+    admin_url = _test_adresi("PANOSU_TEST_ADMIN_URL", "PANOSU_MIGRASYON_URL")
 
     if not app_url or not admin_url:
         pytest.exit(
-            "PANOSU_TEST_APP_URL ve PANOSU_TEST_ADMIN_URL ortam değişkenleri tanımlı olmalı "
-            "(bkz. tests/conftest.py başındaki açıklama).",
+            "Test bağlantı adresleri bulunamadı: PANOSU_TEST_APP_URL / PANOSU_TEST_ADMIN_URL ortam değişkenlerini "
+            "ya da .env'de PANOSU_VERITABANI_URL / PANOSU_MIGRASYON_URL'yi tanımlayın.",
             returncode=2,
         )
     for url in (app_url, admin_url):
         if not (make_url(url).database or "").endswith("_test"):
             pytest.exit("Güvenlik: testler yalnızca adı '_test' ile biten bir veritabanında çalışır.", returncode=2)
 
+    os.environ["PANOSU_TEST_APP_URL"] = app_url          # fixture'lar buradan okur
+    os.environ["PANOSU_TEST_ADMIN_URL"] = admin_url
     # Ortam değişkenleri .env dosyasından önceliklidir; uygulama test veritabanını kullanır.
     os.environ["PANOSU_VERITABANI_URL"] = app_url
     os.environ["PANOSU_ORTAM"] = "gelistirme"
@@ -95,6 +113,37 @@ def iki_kiraci(admin_engine):
             con.execute(text("SET LOCAL lock_timeout = '10s'"))
             _kiraci_temizle(con, a)
             _kiraci_temizle(con, b)
+
+
+@pytest.fixture()
+def calisan(admin_engine, iki_kiraci):
+    """A işletmesinde 'calisan' rolünde ikinci bir kullanıcı. Test sonunda silinir."""
+    a, _ = iki_kiraci
+    kullanici_id = uuid.uuid4()
+    k, i = str(kullanici_id), str(a.isletme_id)
+    with admin_engine.begin() as con:
+        con.execute(text("SET LOCAL lock_timeout = '10s'"))
+        con.execute(
+            text("INSERT INTO kullanicilar (kullanici_id, eposta, ad_soyad) VALUES (:u, :e, 'Çalışan')"),
+            {"u": k, "e": f"{k}@test.local"},
+        )
+        con.execute(
+            text("INSERT INTO uyelikler (isletme_id, kullanici_id, rol) VALUES (:i, :u, 'calisan')"),
+            {"i": i, "u": k},
+        )
+    try:
+        yield Kiraci(a.isletme_id, kullanici_id, a.musteri_id, a.musteri_adi)
+    finally:
+        with admin_engine.begin() as con:
+            con.execute(text("SET LOCAL lock_timeout = '10s'"))
+            con.execute(text("DELETE FROM uyelikler WHERE kullanici_id = :u"), {"u": k})
+            con.execute(text("DELETE FROM denetim_kayitlari WHERE kullanici_id = :u"), {"u": k})
+            con.execute(text("DELETE FROM kullanicilar WHERE kullanici_id = :u"), {"u": k})
+
+
+def basliklar(kiraci: Kiraci) -> dict[str, str]:
+    """GEÇİCİ başlık tabanlı kimlik (yalnız geliştirme ortamı)."""
+    return {"X-Kullanici-Id": str(kiraci.kullanici_id), "X-Isletme-Id": str(kiraci.isletme_id)}
 
 
 @pytest.fixture()

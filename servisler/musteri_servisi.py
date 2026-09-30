@@ -9,14 +9,13 @@ import uuid
 from collections.abc import Sequence
 
 from sqlalchemy import func, or_, select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from models import Musteri
 from semalar.musteri import MusteriGuncelle, MusteriOlustur
+from servisler.ortak import kaydet
 
 TELEFON_TEKIL_INDEKSI = "musteri_telefon_tekil_idx"
-_TEKILLIK_IHLALI = "23505"
 _SEMA_ALANI = {"telefon": "telefon_e164"}   # şema alanı -> model sütunu
 
 
@@ -28,20 +27,11 @@ class TelefonZatenKayitli(Exception):
     pass
 
 
+_TEKILLIK = {TELEFON_TEKIL_INDEKSI: TelefonZatenKayitli}
+
+
 def _sutunlar(alanlar: dict) -> dict:
     return {_SEMA_ALANI.get(ad, ad): deger for ad, deger in alanlar.items()}
-
-
-def _kaydet(db: Session) -> None:
-    try:
-        db.commit()
-    except IntegrityError as e:
-        db.rollback()
-        diag = getattr(e.orig, "diag", None)
-        if (getattr(e.orig, "pgcode", None) == _TEKILLIK_IHLALI
-                and getattr(diag, "constraint_name", None) == TELEFON_TEKIL_INDEKSI):
-            raise TelefonZatenKayitli from e
-        raise
 
 
 def _like_kacis(metin: str) -> str:
@@ -51,7 +41,7 @@ def _like_kacis(metin: str) -> str:
 def musteri_olustur(db: Session, veri: MusteriOlustur) -> Musteri:
     musteri = Musteri(**_sutunlar(veri.model_dump()), kaynak="manuel")
     db.add(musteri)
-    _kaydet(db)
+    kaydet(db, _TEKILLIK)
     db.refresh(musteri)     # sunucu varsayılanları: musteri_id, isletme_id, zamanlar
     return musteri
 
@@ -92,7 +82,7 @@ def musteri_guncelle(db: Session, musteri_id: uuid.UUID, veri: MusteriGuncelle) 
     musteri = musteri_getir(db, musteri_id)
     for sutun, deger in _sutunlar(veri.model_dump(exclude_unset=True)).items():
         setattr(musteri, sutun, deger)
-    _kaydet(db)
+    kaydet(db, _TEKILLIK)
     db.refresh(musteri)     # guncelleme_zamani DB trigger'ı ile değişir
     return musteri
 

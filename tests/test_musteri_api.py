@@ -5,9 +5,8 @@ from datetime import datetime
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import text
 
-from conftest import Kiraci
+from conftest import basliklar as _basliklar
 
 YANIT_ALANLARI = {
     "musteri_id", "ad_soyad", "telefon_e164", "eposta", "notlar", "kaynak",
@@ -19,34 +18,6 @@ YANIT_ALANLARI = {
 def istemci():
     from main import app
     return TestClient(app)
-
-
-@pytest.fixture()
-def calisan(admin_engine, iki_kiraci):
-    """A işletmesinde 'calisan' rolünde ikinci bir kullanıcı. Test sonunda silinir."""
-    a, _ = iki_kiraci
-    kullanici_id = uuid.uuid4()
-    k, i = str(kullanici_id), str(a.isletme_id)
-    with admin_engine.begin() as con:
-        con.execute(
-            text("INSERT INTO kullanicilar (kullanici_id, eposta, ad_soyad) VALUES (:u, :e, 'Çalışan')"),
-            {"u": k, "e": f"{k}@test.local"},
-        )
-        con.execute(
-            text("INSERT INTO uyelikler (isletme_id, kullanici_id, rol) VALUES (:i, :u, 'calisan')"),
-            {"i": i, "u": k},
-        )
-    try:
-        yield Kiraci(a.isletme_id, kullanici_id, a.musteri_id, a.musteri_adi)
-    finally:
-        with admin_engine.begin() as con:
-            con.execute(text("DELETE FROM uyelikler WHERE kullanici_id = :u"), {"u": k})
-            con.execute(text("DELETE FROM denetim_kayitlari WHERE kullanici_id = :u"), {"u": k})
-            con.execute(text("DELETE FROM kullanicilar WHERE kullanici_id = :u"), {"u": k})
-
-
-def _basliklar(kiraci):
-    return {"X-Kullanici-Id": str(kiraci.kullanici_id), "X-Isletme-Id": str(kiraci.isletme_id)}
 
 
 def _olustur(istemci, kiraci, **alanlar):

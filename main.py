@@ -3,10 +3,12 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from bagimliliklar import get_db
-from rotalar import musteriler
+from rotalar import hizmetler, musteriler, ziyaretler
 
 app = FastAPI(title="Panosu SaaS API")
 app.include_router(musteriler.router)
+app.include_router(hizmetler.router)
+app.include_router(ziyaretler.router)
 
 
 @app.get("/")
