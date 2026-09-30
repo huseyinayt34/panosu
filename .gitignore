@@ -1,0 +1,10 @@
+.env
+__pycache__/
+.venv/
+.idea/
+.pytest_cache/
+.claude/
+.mcp.json
+test_sonucu.txt
+*.pyc
+_*alan*.py
