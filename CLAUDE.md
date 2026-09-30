@@ -95,7 +95,7 @@ gösterecek şekilde `alembic upgrade head`.
 - Raporlar raporlar/ klasörüne kaydedilir; bu klasör git'e girmez.
 
 ## Açık konular
-- `veri/` commit'lenmez (üretilmiş veri; `.gitignore`'a eklenmeli).
+Şu an açık konu yok.
 
 ## Çalışma şekli
 - Her görevin sonunda rapor: değişen dosyalar, pytest özet satırı, talimattan her sapma.
