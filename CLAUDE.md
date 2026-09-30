@@ -74,15 +74,25 @@ gösterecek şekilde `alembic upgrade head`.
 | # | Adım | Durum |
 |---|---|---|
 | 1 | Güvenlik kilidi (RLS, bekçi testleri) | Tamam |
-| 2 | Alembic baseline (boş veritabanında doğrulandı, canlı stamp'lendi) | Tamam |
-| 3 | Müşteri API'si | Tamam (44/44 test) |
-| 4a | Hizmetler + ziyaretler API'si | Tamam, tanım: `docs/adim-4a.md` |
-| 4b | CSV içe aktarma | Bekliyor: gerçek işletme verisi formatı (Faz 0 görüşmeleri) |
-| 5 | Skor motoru v2 (Riskteki Para, BG/NBD) | Planlandı |
-| 6 | Gerçek kimlik doğrulama (başlık tabanlı geçici kimliğin yerine) | Planlandı |
-| 7 | Web paneli (Next.js) | Planlandı |
-| 8 | İzin, mesaj, geri kazanım ölçümü | Planlandı |
-| 9 | Yayına alma, demo verisi, ödeme | Planlandı (iki rol için farklı, güçlü parolalar zorunlu) |
+| 2 | Alembic baseline | Tamam |
+| 3 | Müşteri API'si | Tamam |
+| 4a | Hizmetler + ziyaretler API'si, sentetik veri motoru (yalnızca _demo veritabanlarına yazar) | Tamam |
+| 5 | Skor motoru v2: BG/NBD + Gamma-Gamma, Riskteki Para, churn_skorlari'na yazma | Sıradaki |
+| 6 | Backtest: V1 ve BG/NBD'nin sentetik veride karşılaştırılması (ROC AUC, kalibrasyon), docs/ altında rapor | Planlandı |
+| 7 | Panel API'si: Riskteki Para listesi, işletme özeti | Planlandı |
+| 4b | CSV içe aktarma (Faz 0'dan gerçek veri formatı gelince, 8'den önce) | Bekliyor |
+| 8 | Gerçek kimlik doğrulama + işletme kaydı | Planlandı |
+| 9 | Web paneli (Next.js), panosu_demo ile canlı demo | Planlandı |
+| 10 | İzin, mesaj, geri kazanım ölçümü | Planlandı |
+| 11 | Yayına alma: Docker, CI, sunucu, güçlü ve farklı parolalar, ödeme | Planlandı |
+
+- Araştırma rafı (zaman kalırsa): RFM/kohort, sağkalım analizi (Kaplan-Meier, Cox), XGBoost + SHAP,
+  kampanya simülatörü / A-B güç analizi.
+- Faz 0: işletmelerle talep ve veri formatı görüşmeleri. Kod değildir; proje sahibi yürütür.
+- Yol haritasının tek kaynağı bu dosyadır. README yalnızca kısa bir özet verir.
+- Matematik kararları (model seçimi, varsayımlar) proje sahibinindir. 5. adıma başlamadan önce model
+  tasarımını yazılı olarak sun ve onay bekle.
+- Raporlar raporlar/ klasörüne kaydedilir; bu klasör git'e girmez.
 
 ## Açık konular
 - `veri/` commit'lenmez (üretilmiş veri; `.gitignore`'a eklenmeli).

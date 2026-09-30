@@ -3,7 +3,7 @@
 Tekrar eden müşterisi olan işletmeler (salon, spor salonu, klinik vb.) için **çok kiracılı (multi-tenant) müşteri analitiği backend'i**.
 Amaç: hangi müşterinin kaybedilmek üzere olduğunu (churn) olasılıksal olarak tahmin etmek ve bunu **"Riskteki Para"** olarak göstermek.
 
-> Durum: **v0.1 — Faz 0 tamamlandı** (veritabanı, güvenlik katmanı, API iskeleti, testler). Analitik modüller yol haritasında.
+> Durum: **Faz 1: çekirdek backend tamamlandı** (veritabanı, güvenlik katmanı, müşteri/hizmet/ziyaret API'si, sentetik veri motoru, testler). Analitik modüller yol haritasında.
 
 ---
 
@@ -14,7 +14,7 @@ Amaç: hangi müşterinin kaybedilmek üzere olduğunu (churn) olasılıksal ola
 - **Kiracı bütünlüğü:** Alt tablolar `(isletme_id, x_id)` bileşik yabancı anahtarlarıyla bağlıdır; bir işletmenin ziyareti başka işletmenin müşterisine bağlanamaz.
 - **Güvenlik bekçisi testleri:** `create_all()` gibi RLS'siz tablo üretebilecek çağrıları, süper kullanıcıyla bağlanmayı ve rol ayrıcalıklarını otomatik yakalayan testler.
 - **Denetim ve KVKK dostu tasarım:** Değişiklikler trigger'larla `denetim_kayitlari` tablosuna yazılır; izni olmayan müşteriye mesaj gönderimi veritabanında engellenir; müşteri anonimleştirme fonksiyonu mevcuttur.
-- **35 otomatik test:** izolasyon, güvenlik, API ve veri doğrulama.
+- **Kapsamlı otomatik test paketi:** izolasyon, güvenlik, API ve veri doğrulama.
 
 ---
 
@@ -36,11 +36,12 @@ flowchart LR
 | Giriş | `main.py` | Uygulamayı ve rotaları birleştirir |
 | Rotalar | `rotalar/` | HTTP uçları; servis hatalarını HTTP kodlarına çevirir |
 | Doğrulama | `semalar/` | Pydantic v2 istek/yanıt şemaları |
-| İş mantığı | `servisler/` | Müşteri işlemleri, E.164 telefon normalleştirme |
+| İş mantığı | `servisler/` | Müşteri, hizmet ve ziyaret işlemleri; E.164 telefon normalleştirme |
 | Bağlam | `bagimliliklar.py`, `database.py` | Her işlem başında aktif işletme/kullanıcıyı PostgreSQL'e bildirir |
 | Veri modeli | `models.py` | Kullanıcı, İşletme, Üyelik, Müşteri, Hizmet, Ziyaret, ZiyaretKalemi |
 | Şema | `faz1_sema.sql`, `alembic/` | Tablolar, RLS, view'lar, trigger'lar, GRANT'lar |
 | Analiz | `MusteriAnalizi.py` | Churn risk modeli (V1 çekirdek) |
+| Sentetik veri | `sentetik/` | BG/NBD tabanlı demo verisi üreticisi ve V1 değerlendirmesi |
 | Testler | `tests/` | İzolasyon, güvenlik bekçisi, API ve birim testleri |
 
 ### Veritabanı öne çıkanları
@@ -74,7 +75,16 @@ Taban değer, çok düzenli müşterilerde $\sigma \to 0$ olduğunda riskin ani 
 | `GET` | `/musteriler` | Müşterileri listele / ara |
 | `GET` | `/musteriler/{id}` | Müşteri detayı |
 | `PATCH` | `/musteriler/{id}` | Müşteri güncelle |
-| `DELETE` | `/musteriler/{id}` | Müşteri sil |
+| `DELETE` | `/musteriler/{id}` | Müşteri sil (soft delete) |
+| `GET` | `/musteriler/{id}/ozet` | Müşteri özeti: ziyaret sayısı, toplam ciro, ortalama sepet, son 90 gün cirosu |
+| `POST` | `/musteriler/{id}/ziyaretler` | Ziyaret kaydet (kalem varsa toplamı sunucu hesaplar) |
+| `GET` | `/musteriler/{id}/ziyaretler` | Müşterinin ziyaretleri (yeniden eskiye, sayfalı) |
+| `GET` | `/ziyaretler/{id}` | Ziyaret detayı (kalemlerle) |
+| `PATCH` | `/ziyaretler/{id}` | Durum, ödeme yöntemi veya not güncelle (tutar ve zaman değişmez) |
+| `POST` | `/hizmetler` | Hizmet oluştur (sahip/yönetici; aynı ad → `409`) |
+| `GET` | `/hizmetler` | Hizmet kataloğu (`durum=aktif\|pasif\|hepsi`, varsayılan `aktif`) |
+| `GET` | `/hizmetler/{id}` | Hizmet detayı |
+| `PATCH` | `/hizmetler/{id}` | Hizmet güncelle / pasifleştir (sahip/yönetici; silme yok) |
 
 Sunucu çalışırken etkileşimli dokümantasyon: `http://127.0.0.1:8000/docs`
 
@@ -90,11 +100,11 @@ python -m venv .venv
 .venv\Scripts\activate          # Linux/macOS: source .venv/bin/activate
 pip install -r requirements.txt
 
-# 2. Ayarlar: .env.example dosyasını .env olarak kopyalayıp parolaları doldurun
+# 2. Ayarlar: .env.example dosyasını .env olarak kopyalayıp parolaları doldurun.
+#    alembic upgrade head'den önce PANOSU_MIGRASYON_URL (DDL yetkili rol) .env'de tanımlı olmalıdır.
 
-# 3. Veritabanı
+# 3. Veritabanı (baseline migration panosu_app rolünü de oluşturur)
 createdb -U postgres panosu
-psql -U postgres -d panosu -c "CREATE ROLE panosu_app NOLOGIN;"
 alembic upgrade head
 psql -U postgres -d panosu -c "ALTER ROLE panosu_app WITH LOGIN PASSWORD 'parolaniz';"
 
@@ -103,27 +113,44 @@ uvicorn main:app --reload
 ```
 
 ### Testler
-Testler veri ekleyip sildiği için **adı `_test` ile biten ayrı bir veritabanında** çalışır (ör. `panosu_test`, aynı şema kurulu olmalı):
+Testler veri ekleyip sildiği için **adı `_test` ile biten ayrı bir veritabanında** çalışır (`panosu_test`, aynı şema kurulu olmalı).
+`tests/conftest.py` bağlantı adreslerini `.env`'deki `PANOSU_VERITABANI_URL` ve `PANOSU_MIGRASYON_URL`'den, yalnızca veritabanı adını `panosu_test` yaparak türetir (`PANOSU_TEST_APP_URL` / `PANOSU_TEST_ADMIN_URL` ortam değişkenleri tanımlıysa onlar önceliklidir):
 
 ```bash
-set PANOSU_TEST_APP_URL=postgresql+psycopg2://panosu_app:PAROLA@localhost:5432/panosu_test
-set PANOSU_TEST_ADMIN_URL=postgresql+psycopg2://postgres:PAROLA@localhost:5432/panosu_test
 pytest
+```
+
+---
+
+## Sentetik veri ve demo
+
+Gerçek veri gelmeden modelleri sınamak için `sentetik/` paketi, BG/NBD modelinin varsayımlarıyla birebir aynı süreçle veri üretir: her müşterinin gizli geliş hızı (Gamma), her ziyaretten sonra kaybolma olasılığı (Beta) ve harcama eğilimi vardır. Gerçek parametreler bilindiği için modellerin başarısı (ör. ROC AUC) doğrudan ölçülebilir.
+
+- Demo verisi ayrı bir veritabanında, `panosu_demo`'da tutulur; canlı veritabanına sentetik veri yazılmaz.
+- **`_demo` kilidi:** Yükleyici hedef veritabanını `--veritabani` ile açıkça ister ve adı `_demo` ile bitmiyorsa bağlantı kurmadan durur.
+
+```bash
+python -m sentetik --sadece-uret                   # veritabanına dokunmadan üret + V1 modelinin ROC AUC'u
+python -m sentetik --veritabani panosu_demo        # üret ve panosu_demo'ya yükle
 ```
 
 ---
 
 ## Yol haritası
 
-| Sürüm | İçerik | Durum |
-|---|---|---|
-| `v0.1` | Çok kiracılı şema, RLS, FastAPI iskeleti, izolasyon ve güvenlik testleri | ✅ |
-| `v0.2` | Sentetik veri motoru (Poisson ziyaretler, Gamma harcamalar, gizli churn süreci) | ⏳ |
-| `v0.3` | RFM segmentasyonu, kohort analizi, ilk Streamlit panosu | ⏳ |
-| `v0.4` | BG/NBD + Gamma-Gamma CLV modelleri (sıfırdan, scipy ile) | ⏳ |
-| `v0.5` | Sağkalım analizi (Kaplan-Meier, Cox) ve XGBoost + SHAP | ⏳ |
-| `v0.6` | Kampanya simülatörü (beklenen değer, bütçe optimizasyonu, A/B güç analizi) | ⏳ |
-| `v1.0` | Docker, CI, canlı demo | ⏳ |
+Tamamlanan: çok kiracılı şema ve RLS, Alembic baseline, müşteri/hizmet/ziyaret API'si, sentetik veri motoru.
+
+| # | Adım |
+|---|---|
+| 5 | Skor motoru v2: BG/NBD + Gamma-Gamma ile Riskteki Para |
+| 6 | Backtest: V1 ve BG/NBD'nin sentetik veride karşılaştırılması |
+| 7 | Panel API'si: Riskteki Para listesi, işletme özeti |
+| 8 | Gerçek kimlik doğrulama ve işletme kaydı (öncesinde CSV içe aktarma) |
+| 9 | Web paneli (Next.js) ve canlı demo |
+| 10 | İzin, mesaj ve geri kazanım ölçümü |
+| 11 | Yayına alma: Docker, CI, sunucu, ödeme |
+
+Araştırma rafı: RFM/kohort, sağkalım analizi (Kaplan-Meier, Cox), XGBoost + SHAP, kampanya simülatörü / A-B güç analizi.
 
 ---
 
