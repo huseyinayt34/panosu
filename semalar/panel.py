@@ -73,11 +73,13 @@ class GunlukFinansYanit(BaseModel):
 
 class FinansYanit(BaseModel):
     """Ay bitmemişse gelirler bugüne kadar; kar_zarar = gercek_gelir − gider_bugune_kadar; uye_basi_aylik_gelir aya
-    ölçeklenir; başabaş tüm ayın gideriyle (proje sahibi kararı, 2026-10-01)."""
+    ölçeklenir; başabaş tüm ayın gideriyle (proje sahibi kararı, 2026-10-01). Ayın ilk 7 gününde üye başı gelir ve
+    başabaş geçen ayın tamamlanmış verisinden (basabas_kaynak_ay)."""
     model_config = ConfigDict(from_attributes=True)
 
     ay: date
     bugun: date
+    gecen_gun: int
     kasaya_giren: Decimal
     gercek_gelir: Decimal
     gider_toplam: Decimal | None
@@ -85,9 +87,13 @@ class FinansYanit(BaseModel):
     kar_zarar: Decimal | None
     gider_girilmedi: bool
     gunluk: list[GunlukFinansYanit]
+    onceki_ay: date
+    onceki_ay_kar_zarar: Decimal | None
+    onceki_ay_gider_girilmedi: bool
     aktif_uye_sayisi: int
     ortalama_aktif_uye: Decimal | None
     uye_basi_aylik_gelir: Decimal | None
     basabas_uye_sayisi: int | None
+    basabas_kaynak_ay: date
     basabas_farki: int | None
     riskteki_para_45_gun: Decimal

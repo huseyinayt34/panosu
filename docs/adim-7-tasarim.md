@@ -156,3 +156,9 @@ Uygulama ayrıntıları:
 - `v_sessiz_uyeler`: giriş bazlıda kalan hak > 0 koşuluna ek olarak son kullanma tarihi geçmemiş olmalı.
 - Demo çift sayım düzeltmesinde ziyaret tutarıyla birlikte kalemlerin indirimi tam tutara eşitlenir; kalem
   dökümü ziyaret toplamıyla tutarlı kalır.
+
+## İyileştirmeler (2026-10-01, proje sahibi isteği)
+- Kâr/zarar göstergesi iki satır: "Geçen ay (tamamlanmış)" (`onceki_ay_kar_zarar`) ve "Bu ay şimdiye kadar"
+  (`kar_zarar`, `gecen_gun` gün).
+- İçinde bulunulan ayın ilk 7 gününde üye başı aylık gelir ve başabaş üye sayısı geçen ayın tamamlanmış verisiyle
+  hesaplanır; kaynak ay `basabas_kaynak_ay` alanında ve raporda "Başabaş <Ay Yıl> verisiyle hesaplandı." metniyle.

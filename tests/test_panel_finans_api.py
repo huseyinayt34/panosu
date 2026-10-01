@@ -11,6 +11,7 @@ from sqlalchemy.exc import DBAPIError
 
 from conftest import basliklar
 from models import IsletmeGideri
+from servisler.finans_servisi import finans_ozeti
 
 D = Decimal
 BUGUN = datetime.now(timezone(timedelta(hours=3))).date()          # işletme saat dilimi: Europe/Istanbul
@@ -107,6 +108,51 @@ def test_finans_gider_girilmedi(istemci, iki_kiraci):
     assert (f["gider_toplam"], f["kar_zarar"], f["gider_girilmedi"], f["basabas_uye_sayisi"]) == (None, None, True, None)
     assert D(f["kasaya_giren"]) == D("3000.00") and D(f["gercek_gelir"]) == D("1500.00")   # 17–31 Ağustos
     assert all(g["gider_payi"] is None and g["net"] is None for g in f["gunluk"])
+
+
+def _ozet(oturum, a, ay, bugun):
+    return finans_ozeti(oturum(a), ay, bugun=bugun)
+
+
+def test_finans_ilk_7_gunde_basabas_gecen_aydan(istemci, iki_kiraci, oturum):
+    a, _ = iki_kiraci
+    _finans_hazirla(istemci, a)
+    istemci.put("/giderler/2026-09", json={"kira": "1000.00", "personel": "500.00"}, headers=basliklar(a))
+
+    f = _ozet(oturum, a, date(2026, 10, 1), date(2026, 10, 3))
+    assert (f.gecen_gun, f.onceki_ay, f.onceki_ay_kar_zarar) == (3, date(2026, 9, 1), D("1750.00"))
+    assert f.basabas_kaynak_ay == date(2026, 9, 1)                      # ayın 3'ü: Eylül'ün tamamlanmış verisi
+    assert (f.uye_basi_aylik_gelir, f.basabas_uye_sayisi, f.ortalama_aktif_uye) == (D("3250.00"), 1, D("1.00"))
+    assert f.gercek_gelir == D("300.00") and f.gider_girilmedi                # Ekim'in kendi verisi değişmez
+    assert f.basabas_farki == f.aktif_uye_sayisi - 1
+
+
+def test_finans_7_gunden_sonra_basabas_bu_aydan(istemci, iki_kiraci, oturum):
+    a, _ = iki_kiraci
+    _finans_hazirla(istemci, a)
+    istemci.put("/giderler/2026-09", json={"kira": "1000.00", "personel": "500.00"}, headers=basliklar(a))
+
+    f = _ozet(oturum, a, date(2026, 10, 1), date(2026, 10, 8))
+    assert (f.gecen_gun, f.basabas_kaynak_ay) == (8, date(2026, 10, 1))
+    assert f.uye_basi_aylik_gelir == D("3100.00")                            # 800 × 31/8 / 1 üye
+    assert f.basabas_uye_sayisi is None                                      # Ekim gideri yok
+    assert f.onceki_ay_kar_zarar == D("1750.00")
+
+
+def test_finans_gecmis_ay_kaynak_kendisi(istemci, iki_kiraci, oturum):
+    a, _ = iki_kiraci
+    _finans_hazirla(istemci, a)
+    istemci.put("/giderler/2026-09", json={"kira": "1000.00", "personel": "500.00"}, headers=basliklar(a))
+    f = _ozet(oturum, a, date(2026, 9, 1), date(2026, 10, 3))
+    assert (f.basabas_kaynak_ay, f.gecen_gun, f.basabas_uye_sayisi) == (date(2026, 9, 1), 30, 1)
+    assert (f.onceki_ay, f.onceki_ay_kar_zarar, f.onceki_ay_gider_girilmedi) == (date(2026, 8, 1), None, True)
+
+
+def test_finans_yanitinda_yeni_alanlar(istemci, iki_kiraci):
+    a, _ = iki_kiraci
+    f = istemci.get("/panel/finans", params={"ay": "2026-09"}, headers=basliklar(a)).json()
+    assert {"gecen_gun", "onceki_ay", "onceki_ay_kar_zarar", "onceki_ay_gider_girilmedi", "basabas_kaynak_ay"} <= f.keys()
+    assert f["basabas_kaynak_ay"] == "2026-09-01" and f["onceki_ay"] == "2026-08-01"
 
 
 def test_finans_ay_bicimi_422(istemci, iki_kiraci):

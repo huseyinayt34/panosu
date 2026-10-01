@@ -18,7 +18,7 @@ TABLO_SATIRI = 10
 SESSIZ_ESIK = Decimal("0.5")
 
 _ortam = Environment(loader=FileSystemLoader(SABLON_DIZINI), autoescape=select_autoescape(["html"]))
-_ortam.globals.update(para=bicim.para, tarih=bicim.tarih, yuzde=bicim.yuzde)
+_ortam.globals.update(para=bicim.para, tarih=bicim.tarih, yuzde=bicim.yuzde, ay_adi=bicim.ay_adi)
 
 
 def haftalik_rapor(db: Session) -> str:

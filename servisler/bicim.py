@@ -29,6 +29,13 @@ def tarih(gun: date | None) -> str:
     return f"{gun.day} {AYLAR[gun.month - 1]} {gun.year}"
 
 
+def ay_adi(ay: date | None) -> str:
+    """date → 'Eylül 2026'. None → '—'."""
+    if ay is None:
+        return "—"
+    return f"{AYLAR[ay.month - 1]} {ay.year}"
+
+
 def yuzde(oran: Decimal | float | None) -> str:
     """0.1234 → '%12' (Türkçe yüzde işareti önde). None → '—'."""
     if oran is None:

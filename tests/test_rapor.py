@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from conftest import basliklar
 from servisler import rapor_uret
-from servisler.bicim import AYLAR, para, tarih, yuzde
+from servisler.bicim import AYLAR, ay_adi, para, tarih, yuzde
 from servisler.yenileme_calistir import IzinsizVeritabani
 
 
@@ -30,6 +30,10 @@ def test_tarih_bicimi(gun, beklenen):
     assert tarih(gun) == beklenen
 
 
+def test_ay_adi_bicimi():
+    assert (ay_adi(date(2026, 9, 1)), ay_adi(date(2027, 1, 15)), ay_adi(None)) == ("Eylül 2026", "Ocak 2027", "—")
+
+
 def test_yuzde_bicimi():
     assert (yuzde(Decimal("0.1234")), yuzde(Decimal("1")), yuzde(None)) == ("%12", "%100", "—")
 
@@ -46,7 +50,8 @@ def test_haftalik_rapor_html(istemci, iki_kiraci):
     assert y.status_code == 200 and y.headers["content-type"].startswith("text/html")
     html = y.text
     assert "İşletme A" in html                                               # işletme adı
-    for metin in ("Bu ay gerçek gelir", "Gider girilmedi",                   # gösterge 1 (gider yok)
+    for metin in ("Geçen ay (tamamlanmış):", "Bu ay şimdiye kadar:",           # gösterge 1: iki satır
+                  "gider girilmedi", "verisiyle hesaplandı",
                   "Önümüzdeki 45 günde riskteki para", "Aktif üye / başabaş üye",
                   "Önümüzdeki 45 günde yenilemesi riskli 10 üye", "En değerli 10 sessiz üye",
                   "Olasılıklar model tahminidir; gerçek yenileme verisiyle kalibre edilmemiştir.",
@@ -57,10 +62,15 @@ def test_haftalik_rapor_html(istemci, iki_kiraci):
 def test_haftalik_rapor_gider_varken_kar_zarar(istemci, iki_kiraci):
     a, _ = iki_kiraci
     bugun = datetime.now(timezone(timedelta(hours=3))).date()
-    istemci.put(f"/giderler/{bugun:%Y-%m}", json={"kira": "45000"}, headers=basliklar(a))
+    gecen_ay = (bugun.replace(day=1) - timedelta(days=1)).replace(day=1)
+    for ay in (bugun, gecen_ay):
+        istemci.put(f"/giderler/{ay:%Y-%m}", json={"kira": "45000"}, headers=basliklar(a))
     html = istemci.get("/rapor/haftalik", headers=basliklar(a)).text
-    assert "Bu ayın kâr/zararı" in html and "Gider girilmedi" not in html
+    assert "gider girilmedi" not in html
+    assert f"({bugun.day} gün)" in html                                       # bu ay kaç gün sayıldı
     assert f"{bugun.day} {AYLAR[bugun.month - 1]} {bugun.year}" in html
+    kaynak = gecen_ay if bugun.day <= 7 else bugun.replace(day=1)
+    assert f"Başabaş {ay_adi(kaynak)} verisiyle hesaplandı." in html
 
 
 def test_haftalik_rapor_calisan_403(istemci, iki_kiraci, calisan):

@@ -17,6 +17,8 @@
   .kutu .etiket { font-size: 8.5pt; color: #556; text-transform: uppercase; letter-spacing: .03em; }
   .kutu .deger { font-size: 15pt; font-weight: 600; margin-top: 3px; }
   .kutu .not { font-size: 8.5pt; color: #556; margin-top: 2px; }
+  .kutu .satir { font-size: 10pt; margin-top: 3px; }
+  .kutu .satir b { font-size: 12pt; }
   .zarar { color: #b42318; }
   .kar { color: #146c43; }
   h2 { font-size: 11.5pt; margin: 14px 0 5px; }
@@ -37,16 +39,17 @@
 
   <section class="kutular">
     <div class="kutu">
-      {% if finans.gider_girilmedi %}
-        <div class="etiket">Bu ay gerçek gelir</div>
-        <div class="deger">{{ para(finans.gercek_gelir) }}</div>
-        <div class="not">Gider girilmedi; kâr/zarar hesaplanamadı.</div>
-      {% else %}
-        <div class="etiket">Bu ayın kâr/zararı</div>
-        <div class="deger {{ 'zarar' if finans.kar_zarar < 0 else 'kar' }}">{{ para(finans.kar_zarar) }}</div>
-        <div class="not">{{ tarih(finans.ay) }} – {{ tarih(finans.bugun) }}: gelir {{ para(finans.gercek_gelir) }},
-          gider {{ para(finans.gider_bugune_kadar) }}</div>
-      {% endif %}
+      <div class="etiket">Kâr / zarar</div>
+      <div class="satir">Geçen ay (tamamlanmış):
+        {% if finans.onceki_ay_gider_girilmedi %}<span class="not">gider girilmedi</span>
+        {% else %}<b class="{{ 'zarar' if finans.onceki_ay_kar_zarar < 0 else 'kar' }}">{{ para(finans.onceki_ay_kar_zarar) }}</b>{% endif %}
+      </div>
+      <div class="satir">Bu ay şimdiye kadar:
+        {% if finans.gider_girilmedi %}<span class="not">gider girilmedi (gelir {{ para(finans.gercek_gelir) }})</span>
+        {% else %}<b class="{{ 'zarar' if finans.kar_zarar < 0 else 'kar' }}">{{ para(finans.kar_zarar) }}</b>{% endif %}
+        ({{ finans.gecen_gun }} gün)
+      </div>
+      <div class="not">{{ ay_adi(finans.onceki_ay) }} ve {{ ay_adi(finans.ay) }}; gelir hak edilen gelirdir.</div>
     </div>
     <div class="kutu">
       <div class="etiket">Önümüzdeki 45 günde riskteki para</div>
@@ -60,6 +63,7 @@
         {% if finans.basabas_farki is none %}Başabaş için gider ve gelir gerekir.
         {% elif finans.basabas_farki >= 0 %}Başabaşın {{ finans.basabas_farki }} üye üzerinde.
         {% else %}Başabaşın {{ -finans.basabas_farki }} üye altında.{% endif %}
+        Başabaş {{ ay_adi(finans.basabas_kaynak_ay) }} verisiyle hesaplandı.
       </div>
     </div>
   </section>
