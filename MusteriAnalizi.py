@@ -16,23 +16,23 @@ Model:
 
 from dataclasses import dataclass
 from datetime import date
-from math import erf, sqrt
 from statistics import mean, stdev
+
+# Model çekirdeği analitik/v1.py'ye taşındı; bu dosya onu içe aktaran ince bir kabuktur.
+from analitik.v1 import (  # noqa: F401  (eski içe aktarmalar için yeniden dışa verilir)
+    MIN_ZIYARET_SAYISI,
+    SEGMENT_ESIKLERI,
+    SIGMA_TABAN_ORANI,
+    churn_riski,
+    normal_cdf,
+    segment_belirle,
+    ziyaret_araliklari,
+)
 
 # --------------------------------------------------------------------------
 # Sabitler
 # --------------------------------------------------------------------------
 REFERANS_TARIHI = date(2026, 9, 29)  # Raporun "bugün"ü (tekrarlanabilir sonuç için sabit)
-MIN_ZIYARET_SAYISI = 3               # En az 2 aralık olmadan std. sapma hesaplanamaz
-SIGMA_TABAN_ORANI = 0.25             # sigma_etkin >= 0.25 * mu
-
-# (üst_sinir, etiket) - risk değeri üst sınırın altındaysa etiket geçerlidir
-SEGMENT_ESIKLERI = [
-    (0.35, "GÜVENLİ"),
-    (0.75, "İZLENMELİ"),
-    (0.95, "YÜKSEK RİSK"),
-    (1.01, "KRİTİK"),
-]
 
 # --------------------------------------------------------------------------
 # Örnek veri (V2'de SQL'den gelecek)
@@ -72,34 +72,6 @@ class MusteriAnalizi:
     gecen_gun: int
     risk: float | None
     segment: str
-
-
-# --------------------------------------------------------------------------
-# Matematik
-# --------------------------------------------------------------------------
-def normal_cdf(x: float) -> float:
-    """Standart normal dağılımın birikimli dağılım fonksiyonu Phi(x)."""
-    return 0.5 * (1.0 + erf(x / sqrt(2.0)))
-
-
-def ziyaret_araliklari(tarihler: list[date]) -> list[int]:
-    """Ardışık ziyaretler arasındaki gün farklarını döndürür."""
-    sirali = sorted(tarihler)
-    return [(b - a).days for a, b in zip(sirali, sirali[1:])]
-
-
-def churn_riski(gecen_gun: int, mu: float, sigma: float) -> float:
-    """Müşterinin, kendi ritmine göre şimdiye kadar dönmüş olması gerekme olasılığı."""
-    sigma_etkin = max(sigma, SIGMA_TABAN_ORANI * mu)
-    z = (gecen_gun - mu) / sigma_etkin
-    return normal_cdf(z)
-
-
-def segment_belirle(risk: float) -> str:
-    for ust_sinir, etiket in SEGMENT_ESIKLERI:
-        if risk < ust_sinir:
-            return etiket
-    return SEGMENT_ESIKLERI[-1][1]
 
 
 # --------------------------------------------------------------------------

@@ -58,6 +58,9 @@ uvicorn main:app --reload                        # geliştirme sunucusu, /docs
 .\.venv\Scripts\python.exe -m sentetik --sadece-uret                    # veritabanına dokunmadan üret + V1 ROC AUC
 .\.venv\Scripts\python.exe -m sentetik --veritabani panosu_demo          # üret ve panosu_demo'ya yükle
 .\.venv\Scripts\python.exe -m sentetik --veritabani panosu_demo --temizle  # eski [DEMO] verisini silip yeniden yükle
+
+.\.venv\Scripts\python.exe -m backtest                  # 6 senaryo × 20 tohum; docs/backtest-sonuclari.md + raporlar/backtest/*.csv
+.\.venv\Scripts\python.exe -m backtest --tohum-sayisi 2 # hızlı deneme
 ```
 Test adresleri: `PANOSU_TEST_APP_URL` / `PANOSU_TEST_ADMIN_URL` ortamda tanımlıysa onlar kullanılır; değilse
 `tests/conftest.py`, `.env`'deki `PANOSU_VERITABANI_URL` / `PANOSU_MIGRASYON_URL`'den yalnızca veritabanı adını
@@ -77,8 +80,9 @@ gösterecek şekilde `alembic upgrade head`.
 | 2 | Alembic baseline | Tamam |
 | 3 | Müşteri API'si | Tamam |
 | 4a | Hizmetler + ziyaretler API'si, sentetik veri motoru (yalnızca _demo veritabanlarına yazar) | Tamam |
-| 5 | Skor motoru v2: BG/NBD + Gamma-Gamma, Riskteki Para, churn_skorlari'na yazma | Sıradaki |
-| 6 | Backtest: V1 ve BG/NBD'nin sentetik veride karşılaştırılması (ROC AUC, kalibrasyon), docs/ altında rapor | Planlandı |
+| 5a | Model kütüphanesi: V1, BG/NBD, MBG/NBD, Gamma-Gamma, Riskteki Para (veritabanı yok; tasarım: `docs/adim-5-6-tasarim.md`) | Tamam |
+| 6 | Backtest: V1, BG/NBD ve MBG/NBD'nin sentetik veride (S0–S5) karşılaştırılması (ROC AUC, kalibrasyon); sonuç: `docs/backtest-sonuclari.md` | Tamam |
+| 5b | Seçilen modelin churn_skorlari'na bağlanması (backtest sonucundan sonra, ayrı belgeyle) | Sıradaki (model kararı bekleniyor) |
 | 7 | Panel API'si: Riskteki Para listesi, işletme özeti | Planlandı |
 | 4b | CSV içe aktarma (Faz 0'dan gerçek veri formatı gelince, 8'den önce) | Bekliyor |
 | 8 | Gerçek kimlik doğrulama + işletme kaydı | Planlandı |
@@ -90,8 +94,8 @@ gösterecek şekilde `alembic upgrade head`.
   kampanya simülatörü / A-B güç analizi.
 - Faz 0: işletmelerle talep ve veri formatı görüşmeleri. Kod değildir; proje sahibi yürütür.
 - Yol haritasının tek kaynağı bu dosyadır. README yalnızca kısa bir özet verir.
-- Matematik kararları (model seçimi, varsayımlar) proje sahibinindir. 5. adıma başlamadan önce model
-  tasarımını yazılı olarak sun ve onay bekle.
+- Matematik kararları (model seçimi, varsayımlar) proje sahibinindir. 5a/6'nın onaylı tasarımı
+  `docs/adim-5-6-tasarim.md`; 5b'ye hangi modelin gireceğine backtest sonucundan sonra proje sahibi karar verir.
 - Raporlar raporlar/ klasörüne kaydedilir; bu klasör git'e girmez.
 
 ## Açık konular
