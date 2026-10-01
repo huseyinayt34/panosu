@@ -30,7 +30,8 @@ DEMO_SAHIP_EPOSTA = "demo-sahip@example.com"
 # Yabancı anahtar bağımlılıklarına göre silme sırası. denetim_kayitlari en sonda: silme trigger'ları
 # da denetim kaydı ürettiği için.
 _SILME_SIRASI = (
-    "geri_kazanimlar", "mesaj_gonderimleri", "churn_skorlari", "musteri_izinleri", "ziyaret_kalemleri",
+    "geri_kazanimlar", "mesaj_gonderimleri", "churn_skorlari", "yenileme_riskleri", "musteri_paketleri",
+    "musteri_izinleri", "ziyaret_kalemleri",
     "ziyaretler", "kampanyalar", "musteriler", "hizmetler", "abonelikler", "uyelikler", "denetim_kayitlari",
 )
 

@@ -7,7 +7,7 @@ mesaj_gonderimleri, geri_kazanimlar, denetim_kayitlari.
 """
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import (
@@ -15,6 +15,7 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     Computed,
+    Date,
     DateTime,
     FetchedValue,
     ForeignKey,
@@ -163,3 +164,55 @@ class ZiyaretKalemi(Base):
     tutar: Mapped[Decimal] = mapped_column(
         Numeric(12, 2), Computed("adet * birim_fiyat - indirim_tutari", persisted=True))
     olusturma_zamani: Mapped[datetime] = _olusturma_zamani()
+
+
+class MusteriPaketi(Base):
+    """Stüdyo üyelik paketi (süre veya giriş bazlı). Tür kuralları DB CHECK'lerindedir (0002)."""
+    __tablename__ = "musteri_paketleri"
+    __table_args__ = (
+        ForeignKeyConstraint(["isletme_id", "musteri_id"], ["musteriler.isletme_id", "musteriler.musteri_id"]),
+        ForeignKeyConstraint(
+            ["isletme_id", "onceki_paket_id"], ["musteri_paketleri.isletme_id", "musteri_paketleri.paket_id"]),
+        UniqueConstraint("isletme_id", "paket_id"),
+    )
+
+    paket_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=_UUID_VARSAYILAN)
+    isletme_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), server_default=_KIRACI_VARSAYILAN)
+    musteri_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    tur: Mapped[str] = mapped_column(Text)
+    ad: Mapped[str] = mapped_column(Text)
+    baslangic_tarihi: Mapped[date] = mapped_column(Date)
+    bitis_tarihi: Mapped[date | None] = mapped_column(Date)
+    giris_hakki: Mapped[int | None] = mapped_column(Integer)
+    ucret: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    durum: Mapped[str] = mapped_column(Text, server_default=text("'aktif'"))
+    onceki_paket_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    dis_kaynak: Mapped[str | None] = mapped_column(Text)
+    dis_kimlik: Mapped[str | None] = mapped_column(Text)
+    olusturma_zamani: Mapped[datetime] = _olusturma_zamani()
+    guncelleme_zamani: Mapped[datetime] = _guncelleme_zamani()
+
+
+class YenilemeRiski(Base):
+    __tablename__ = "yenileme_riskleri"
+    __table_args__ = (
+        ForeignKeyConstraint(["isletme_id", "musteri_id"], ["musteriler.isletme_id", "musteriler.musteri_id"]),
+        ForeignKeyConstraint(["isletme_id", "paket_id"], ["musteri_paketleri.isletme_id", "musteri_paketleri.paket_id"]),
+        UniqueConstraint("isletme_id", "paket_id", "hesaplama_tarihi", "model_versiyonu"),
+    )
+
+    risk_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=_UUID_VARSAYILAN)
+    isletme_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), server_default=_KIRACI_VARSAYILAN)
+    musteri_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    paket_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    hesaplama_tarihi: Mapped[date] = mapped_column(Date)
+    model_versiyonu: Mapped[str] = mapped_column(Text)
+    kalan_gun: Mapped[int | None] = mapped_column(Integer)
+    kalan_giris: Mapped[int | None] = mapped_column(Integer)
+    p_hayatta_simdi: Mapped[Decimal | None] = mapped_column(Numeric(5, 4))
+    p_yenileme: Mapped[Decimal] = mapped_column(Numeric(5, 4))
+    yenileme_tutari: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    # Veritabanı hesaplar (GENERATED ALWAYS); ORM asla yazmaz
+    riskteki_para: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2), Computed("ROUND((1 - p_yenileme) * yenileme_tutari, 2)", persisted=True))
+    hesaplanma_zamani: Mapped[datetime] = _olusturma_zamani()

@@ -163,3 +163,80 @@ def uret(kod: str, rng: np.random.Generator, musteri_sayisi: int = MUSTERI_SAYIS
     tutarlar = [carpan[i] * rng.gamma(GERCEK_GG.p, 1.0 / nu[i], size=len(z)) for i, z in enumerate(zamanlar)]
 
     return SenaryoVerisi(kod=kod, zamanlar=zamanlar, tutarlar=tutarlar, edinim=edinim, olum=olum, grup=grup)
+
+
+# ---------------------------------------------------------------------------------------------
+# S6 "Stüdyo" (Adım 5b): sözleşmeli üyelik paketleri ve yenileme
+# ---------------------------------------------------------------------------------------------
+# Paket karışımı ve fiyatlar (HİPOTEZ): (ad, tür, oran, süre gün, giriş hakkı, fiyat TL)
+S6_PAKETLER = (
+    ("1 Aylık", "sure", 0.45, 30.0, None, 2500),
+    ("3 Aylık", "sure", 0.25, 90.0, None, 6000),
+    ("6 Aylık", "sure", 0.15, 180.0, None, 10000),
+    ("12 Giriş", "giris", 0.15, None, 12, 800),
+)
+S6_UYE_SAYISI = 1500
+S6_MU_ORTALAMA = 4.0                  # ortalama ziyaret aralığı (gün); μ_i ~ Gamma(şekil S1_MU_SEKLI). Şekil BELGEDE YOK.
+S6_GIRIS_SON_KULLANMA = 60.0          # 12 giriş paketi 60 gün sonra biter (proje sahibi kararı, 2026-10-01)
+S6_YENILEME_ORANI = 0.90              # paket bittiğinde hayatta olan üyenin yenileme olasılığı
+
+
+@dataclass
+class S6Paket:
+    uye: int
+    tur_no: int                       # S6_PAKETLER indeksi
+    baslangic: float
+    bitis: float
+    yeniledi: bool
+
+
+@dataclass
+class S6Verisi:
+    zamanlar: list[np.ndarray]        # üye başına gerçekleşen ziyaretler (üyelik sona erince kesilir)
+    edinim: np.ndarray
+    olum: np.ndarray                  # MBG/NBD bırakma anı (o ziyaretin zamanı); np.inf = bırakmadı
+    paketler: list[S6Paket]
+
+
+def _s6_potansiyel_ziyaretler(t0: float, mu: float, p: float, rng: np.random.Generator) -> tuple[np.ndarray, float]:
+    """Düzenli aralıklar (S1 kalıbı); bırakma ilk ziyaret dahil her ziyaretten sonra p ile (MBG/NBD)."""
+    zamanlar, t = [t0], t0
+    while True:
+        if rng.random() < p:
+            return np.array(zamanlar), t
+        t += rng.gamma(S1_ARALIK_SEKLI, mu / S1_ARALIK_SEKLI)
+        if t >= GOZLEM_GUN:
+            return np.array(zamanlar), np.inf
+        zamanlar.append(t)
+
+
+def uret_s6(rng: np.random.Generator, uye_sayisi: int = S6_UYE_SAYISI) -> S6Verisi:
+    """Her üye edinimde (ilk ziyaret) bir paket alır. Paket bittiğinde üye hayattaysa %90 olasılıkla aynı türü yeniler;
+    hayatta değilse yenilemez. Yenilemeyen üyenin ziyaretleri paket bitişinde kesilir. Bırakan üye paket bitene
+    kadar ödemiş ama gelmeyen üyedir. Hayatta olma: bırakma anı > paket bitişi (giriş paketi son hakla bittiyse
+    o ziyaretteki bırakma da sayılır)."""
+    oranlar = np.array([pk[2] for pk in S6_PAKETLER])
+    edinim = rng.uniform(0.0, GOZLEM_GUN, size=uye_sayisi)
+    turler = rng.choice(len(S6_PAKETLER), size=uye_sayisi, p=oranlar)
+    zamanlar, olum, paketler = [], np.full(uye_sayisi, np.inf), []
+    for i in range(uye_sayisi):
+        mu = rng.gamma(S1_MU_SEKLI, S6_MU_ORTALAMA / S1_MU_SEKLI)
+        p = _bgnbd_p(rng)
+        z, olum[i] = _s6_potansiyel_ziyaretler(float(edinim[i]), mu, p, rng)
+        _, tur, _, sure, hak, _ = S6_PAKETLER[turler[i]]
+        baslangic, ilk = float(edinim[i]), True
+        while baslangic < GOZLEM_GUN:
+            if tur == "sure":
+                bitis = baslangic + sure
+            else:
+                donem = z[(z >= baslangic) if ilk else (z > baslangic)]
+                donem = donem[donem <= baslangic + S6_GIRIS_SON_KULLANMA]
+                bitis = float(donem[hak - 1]) if len(donem) >= hak else baslangic + S6_GIRIS_SON_KULLANMA
+            yeniledi = bool(olum[i] > bitis and rng.random() < S6_YENILEME_ORANI)
+            paketler.append(S6Paket(i, int(turler[i]), baslangic, bitis, yeniledi))
+            if not yeniledi:
+                z = z[z <= bitis]
+                break
+            baslangic, ilk = bitis, False
+        zamanlar.append(z[z <= GOZLEM_GUN])
+    return S6Verisi(zamanlar=zamanlar, edinim=edinim, olum=olum, paketler=paketler)

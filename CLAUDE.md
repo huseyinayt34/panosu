@@ -21,6 +21,8 @@ main.py → rotalar/ → (bagimliliklar.py, servisler/, semalar/) → models.py 
 - `models.py`: yalnızca sütunları yansıtır. Şemanın tek kaynağı SQL'dir.
 - `faz1_sema.sql`: okunabilir şema kaynağı. `alembic/sql/0001_faz1_sema.sql`: aynısı, BEGIN/COMMIT'siz.
 - `sentetik/`: BG/NBD tabanlı sentetik veri üreticisi. Yükleyici yalnızca adı `_demo` ile biten veritabanına yazar.
+- `analitik/`: modeller (V1, BG/NBD, MBG/NBD, Gamma-Gamma, yenileme simülasyonu); veritabanı bilmez.
+- `backtest/`: sentetik senaryolarda model karşılaştırması (S0–S6); veritabanı yok.
 
 ## Değiştirilemez kurallar
 1. `create_all` / `drop_all` / `reflect` kullanılmaz. `alembic/` dışında DDL yazılmaz.
@@ -45,7 +47,7 @@ main.py → rotalar/ → (bagimliliklar.py, servisler/, semalar/) → models.py 
 |---|---|---|
 | `panosu` | Canlı; yalnızca gerçek işletme verisi | Yalnızca salt-okunur sorgu. Her yazma işlemi açık onay ister. `alembic upgrade` asla çalıştırılmaz (yalnızca onaylı `stamp`). |
 | `panosu_test` | pytest | Silinip `alembic upgrade head` ile yeniden kurulabilir |
-| `panosu_demo` | Sentetik veri, demo, backtest | Kuruldu; 4 [DEMO] işletme, sentetik veri. Yükleyici yalnızca _demo adlarına yazar. |
+| `panosu_demo` | Sentetik veri, demo, backtest | Kuruldu; 4 [DEMO] işletme, sentetik veri; [DEMO] Denge Pilates'te üyelik paketleri ve yenileme riskleri. Yükleyici yalnızca _demo adlarına yazar. |
 
 Sentetik veri ASLA `panosu`'ya yazılmaz.
 
@@ -61,6 +63,9 @@ uvicorn main:app --reload                        # geliştirme sunucusu, /docs
 
 .\.venv\Scripts\python.exe -m backtest                  # 6 senaryo × 20 tohum; docs/backtest-sonuclari.md + raporlar/backtest/*.csv
 .\.venv\Scripts\python.exe -m backtest --tohum-sayisi 2 # hızlı deneme
+
+.\.venv\Scripts\python.exe -m sentetik.paket_uretici --veritabani panosu_demo    # demo stüdyoya paket (bir kez)
+.\.venv\Scripts\python.exe -m servisler.yenileme_calistir --veritabani panosu_demo --isletme <uuid>  # yenileme riski (_demo/_test)
 ```
 Test adresleri: `PANOSU_TEST_APP_URL` / `PANOSU_TEST_ADMIN_URL` ortamda tanımlıysa onlar kullanılır; değilse
 `tests/conftest.py`, `.env`'deki `PANOSU_VERITABANI_URL` / `PANOSU_MIGRASYON_URL`'den yalnızca veritabanı adını
@@ -82,7 +87,8 @@ gösterecek şekilde `alembic upgrade head`.
 | 4a | Hizmetler + ziyaretler API'si, sentetik veri motoru (yalnızca _demo veritabanlarına yazar) | Tamam |
 | 5a | Model kütüphanesi: V1, BG/NBD, MBG/NBD, Gamma-Gamma, Riskteki Para (veritabanı yok; tasarım: `docs/adim-5-6-tasarim.md`) | Tamam |
 | 6 | Backtest: V1, BG/NBD ve MBG/NBD'nin sentetik veride (S0–S5) karşılaştırılması (ROC AUC, kalibrasyon); sonuç: `docs/backtest-sonuclari.md` | Tamam |
-| 5b | Seçilen modelin churn_skorlari'na bağlanması (backtest sonucundan sonra, ayrı belgeyle) | Sıradaki (model kararı bekleniyor) |
+| 5b | Sözleşmeli üyelik (paketler), yenileme riski (M3 + simülasyon), S6 backtest, panel ucu (`docs/adim-5b-tasarim.md`) | Tamam |
+| 5c | Yenileme modelinin gerçek yenileme verisiyle kalibrasyonu (Faz 0 verisi gelince) | Bekliyor |
 | 7 | Panel API'si: Riskteki Para listesi, işletme özeti | Planlandı |
 | 4b | CSV içe aktarma (Faz 0'dan gerçek veri formatı gelince, 8'den önce) | Bekliyor |
 | 8 | Gerçek kimlik doğrulama + işletme kaydı | Planlandı |
@@ -95,7 +101,7 @@ gösterecek şekilde `alembic upgrade head`.
 - Faz 0: işletmelerle talep ve veri formatı görüşmeleri. Kod değildir; proje sahibi yürütür.
 - Yol haritasının tek kaynağı bu dosyadır. README yalnızca kısa bir özet verir.
 - Matematik kararları (model seçimi, varsayımlar) proje sahibinindir. 5a/6'nın onaylı tasarımı
-  `docs/adim-5-6-tasarim.md`; 5b'ye hangi modelin gireceğine backtest sonucundan sonra proje sahibi karar verir.
+  `docs/adim-5-6-tasarim.md`; 5b'nin onaylı tasarımı `docs/adim-5b-tasarim.md` (ürüne M3 girdi).
 - Raporlar raporlar/ klasörüne kaydedilir; bu klasör git'e girmez.
 
 ## Açık konular
