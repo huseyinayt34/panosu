@@ -41,6 +41,8 @@ def test_temizle_demo_disi_engine_reddeder():
     engine = create_engine("postgresql+psycopg2://x@localhost/panosu")     # engine oluşturmak bağlanmaz
     with pytest.raises(DemoDisiVeritabani):
         temizle(engine)
+    with pytest.raises(DemoDisiVeritabani):                                # tek işletme silme de aynı kilitle
+        temizle(engine, "[DEMO] Butik Reformer")
 
 
 def test_adresler_yalnizca_veritabani_adi_degisir():

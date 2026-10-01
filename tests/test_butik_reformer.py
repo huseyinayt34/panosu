@@ -50,3 +50,13 @@ def test_kilit_baglanmadan_reddeder(monkeypatch, ad):
     monkeypatch.setattr(yukleyici, "create_engine", _yasak)
     with pytest.raises(DemoDisiVeritabani):
         butik_reformer.yukle(ButikVerisi(), ad)
+
+
+@pytest.mark.parametrize("ad", ["panosu", "panosu_test", "", None])
+def test_yeniden_kilidi_baglanmadan_reddeder(monkeypatch, ad):
+    def _yasak(*a, **k):
+        raise AssertionError("Kilit, bağlantı kurulmadan önce devreye girmeliydi")
+    monkeypatch.setattr(butik_reformer, "create_engine", _yasak)
+    monkeypatch.setattr(yukleyici, "create_engine", _yasak)
+    with pytest.raises(DemoDisiVeritabani):
+        butik_reformer.yukle(ButikVerisi(), ad, yeniden=True)

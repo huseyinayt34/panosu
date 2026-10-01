@@ -72,13 +72,19 @@ def demo_isletme_sayisi(yonetici: Engine) -> int:
         return con.scalar(text("SELECT count(*) FROM isletmeler WHERE ad LIKE :o"), {"o": f"{DEMO_ONEK}%"})
 
 
-def temizle(yonetici: Engine) -> int:
-    """Adı [DEMO] ile başlayan işletmeleri ve tüm verilerini siler. Silinen işletme sayısını döndürür."""
+def temizle(yonetici: Engine, isletme_adi: str | None = None) -> int:
+    """Adı [DEMO] ile başlayan işletmeleri ve tüm verilerini siler. Silinen işletme sayısını döndürür.
+
+    isletme_adi verilirse yalnızca o adlı [DEMO] işletme silinir; verilmezse tüm [DEMO] işletmeler.
+    """
     demo_veritabani_dogrula(yonetici.url.database)
     with yonetici.begin() as con:
-        idler = con.execute(
-            text("SELECT isletme_id FROM isletmeler WHERE ad LIKE :o"), {"o": f"{DEMO_ONEK}%"}
-        ).scalars().all()
+        if isletme_adi is None:
+            sorgu, degerler = "SELECT isletme_id FROM isletmeler WHERE ad LIKE :o", {"o": f"{DEMO_ONEK}%"}
+        else:
+            sorgu = "SELECT isletme_id FROM isletmeler WHERE ad = :a AND ad LIKE :o"
+            degerler = {"a": isletme_adi, "o": f"{DEMO_ONEK}%"}
+        idler = con.execute(text(sorgu), degerler).scalars().all()
         if not idler:
             return 0
         for tablo in _SILME_SIRASI:

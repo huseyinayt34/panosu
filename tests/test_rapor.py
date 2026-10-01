@@ -1,5 +1,6 @@
 """Haftalık rapor (GET /rapor/haftalik, komut kilidi) ve Türkçe biçimleme."""
 
+import dataclasses
 import uuid
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
@@ -8,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from conftest import basliklar
-from servisler import rapor_uret
+from servisler import rapor_servisi, rapor_uret
 from servisler.bicim import AYLAR, ay_adi, para, tarih, yuzde
 from servisler.yenileme_calistir import IzinsizVeritabani
 
@@ -71,6 +72,27 @@ def test_haftalik_rapor_gider_varken_kar_zarar(istemci, iki_kiraci):
     assert f"{bugun.day} {AYLAR[bugun.month - 1]} {bugun.year}" in html
     kaynak = gecen_ay if bugun.day <= 7 else bugun.replace(day=1)
     assert f"Başabaş {ay_adi(kaynak)} verisiyle hesaplandı." in html
+
+
+def test_haftalik_rapor_zarar_icin_kayip_uye_cumlesi(istemci, iki_kiraci, monkeypatch):
+    a, _ = iki_kiraci
+    gercek = rapor_servisi.finans_ozeti
+
+    def _ozet(db, ay):                                    # aktif 78, başabaş 67 → fark 11 → 12 üye
+        f = gercek(db, ay)
+        return dataclasses.replace(f, aktif_uye_sayisi=78, basabas_uye_sayisi=67, basabas_farki=11,
+                                   zarar_icin_kayip_uye=12)
+    monkeypatch.setattr(rapor_servisi, "finans_ozeti", _ozet)
+    html = istemci.get("/rapor/haftalik", headers=basliklar(a)).text
+    assert "Başabaşın 11 üye üzerinde." in html
+    assert "12 üye kaybederseniz zarara geçersiniz." in html
+
+
+def test_haftalik_rapor_basabas_yokken_zarar_cumlesi_yok(istemci, iki_kiraci):
+    a, _ = iki_kiraci
+    html = istemci.get("/rapor/haftalik", headers=basliklar(a)).text
+    assert "Başabaş için gider ve gelir gerekir." in html
+    assert "zarara geçersiniz" not in html
 
 
 def test_haftalik_rapor_calisan_403(istemci, iki_kiraci, calisan):

@@ -50,7 +50,7 @@ main.py → rotalar/ → (bagimliliklar.py, servisler/, semalar/) → models.py 
 |---|---|---|
 | `panosu` | Canlı; yalnızca gerçek işletme verisi | Yalnızca salt-okunur sorgu. Her yazma işlemi açık onay ister. `alembic upgrade` asla çalıştırılmaz (yalnızca onaylı `stamp`). |
 | `panosu_test` | pytest | Silinip `alembic upgrade head` ile yeniden kurulabilir |
-| `panosu_demo` | Sentetik veri, demo, backtest | Kuruldu; 5 [DEMO] işletme, sentetik veri; [DEMO] Denge Pilates'te üyelik paketleri, yenileme riskleri ve Ekim 2026 demo giderleri (paket dönemi ziyaret tutarları 0); [DEMO] Butik Reformer: Faz 0 demosu (~75 aktif üye, 18 ay paket/ziyaret geçmişi, her ay gider). Yükleyici yalnızca _demo adlarına yazar. |
+| `panosu_demo` | Sentetik veri, demo, backtest | Kuruldu; 5 [DEMO] işletme, sentetik veri; [DEMO] Denge Pilates'te üyelik paketleri, yenileme riskleri ve 2026-03'ten itibaren her ay 330.000 TL demo gideri (Panosu'ya geçiş ayı) (paket dönemi ziyaret tutarları 0); [DEMO] Butik Reformer: Faz 0 demosu (p ~ Beta(1, 290), ayda 5 yeni üye; ~75 aktif üye, 18 ay paket/ziyaret geçmişi, her ay gider). Yükleyici yalnızca _demo adlarına yazar. |
 
 Sentetik veri ASLA `panosu`'ya yazılmaz.
 
@@ -69,7 +69,10 @@ uvicorn main:app --reload                        # geliştirme sunucusu, /docs
 
 .\.venv\Scripts\python.exe -m sentetik.paket_uretici --veritabani panosu_demo    # demo stüdyoya paket (bir kez)
 .\.venv\Scripts\python.exe -m sentetik.paket_uretici --veritabani panosu_demo --giderler 2026-10   # demo giderleri
+.\.venv\Scripts\python.exe -m sentetik.paket_uretici --veritabani panosu_demo --gecmis-giderler   # 2026-03'ten (ya da ilk ziyaret ayından) bugüne eksik aylar
+.\.venv\Scripts\python.exe -m sentetik.paket_uretici --veritabani panosu_demo --gecmis-giderler --guncelle   # ayrıca demo giderlerini güncelle, 2026-03 öncesini sil
 .\.venv\Scripts\python.exe -m sentetik.butik_reformer --veritabani panosu_demo    # ikinci Faz 0 demosu (bir kez)
+.\.venv\Scripts\python.exe -m sentetik.butik_reformer --veritabani panosu_demo --yeniden   # yalnızca Butik Reformer'ı silip yeniden yükle
 .\.venv\Scripts\python.exe -m sentetik.demo_kullanici --veritabani panosu_demo    # demo@panosu.local (parola getpass)
 .\.venv\Scripts\python.exe -m servisler.isletme_ac --veritabani <ad> --eposta <e> --ad-soyad <a> --isletme <ad>  # pilot işletme (_demo/_test; canlı: --canli-onay, ayrı onayla)
 .\.venv\Scripts\python.exe -m servisler.rapor_uret --veritabani panosu_demo --isletme <uuid> --cikti raporlar/haftalik.html
@@ -106,6 +109,15 @@ gösterecek şekilde `alembic upgrade head`.
 | 10 | İzin, mesaj, geri kazanım ölçümü | Planlandı |
 | 11 | Yayına alma: Docker, CI, sunucu, güçlü ve farklı parolalar, ödeme | Planlandı |
 
+Geliştirme fikirleri (karar değil; ilgili adımda tasarlanacak):
+- Adım 9: her riskli üye için "neden riskli" açıklaması (örn. son ziyaretten bu yana geçen gün, normal ziyaret
+  aralığına göre sapma, paket bitişine kalan gün).
+- Adım 4b: yapay zekâ ile CSV sütun eşleme önerisi; yoklama defteri fotoğrafından tablo çıkarma.
+- Adım 10: kontrol gruplu mesajlaşma ve uplift ölçümü; "uyuyan köpekleri" (ödeyip az gelen üyeleri) rahatsız
+  etmeme; geri kazanımın nedensel kanıtı.
+- Adım 8a: işletmeler arası hiyerarşik Bayes önselleri.
+- Adım 11 sonrası: yazılım firmalarına Skor API'si.
+
 - Araştırma rafı (zaman kalırsa): RFM/kohort, sağkalım analizi (Kaplan-Meier, Cox), XGBoost + SHAP,
   kampanya simülatörü / A-B güç analizi.
   - Kafe/restoran modülü (menü fotoğrafından ürün çıkarma, menü mühendisliği, enflasyon/marj alarmı). Başlama
@@ -118,7 +130,7 @@ gösterecek şekilde `alembic upgrade head`.
 - Raporlar raporlar/ klasörüne kaydedilir; bu klasör git'e girmez.
 
 ## Açık konular
-Şu an açık konu yok.
+- finans_ozeti geçmiş bir ay için de aktif_uye_sayisi ve basabas_farki'nı bugünün aktif üyesiyle hesaplıyor. Adım 9'da ay seçilen panelde ayın son günü (veya ort. aktif) kullanılmalı; karar proje sahibinin.
 
 ## Çalışma şekli
 - Her görevin sonunda rapor: değişen dosyalar, pytest özet satırı, talimattan her sapma.

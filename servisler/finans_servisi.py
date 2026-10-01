@@ -61,6 +61,7 @@ class FinansOzeti:
     basabas_uye_sayisi: int | None            # basabas_kaynak_ay'ın
     basabas_kaynak_ay: date                   # üye başı gelir ve başabaşın hesaplandığı ay
     basabas_farki: int | None
+    zarar_icin_kayip_uye: int | None          # kaç üye kaybedilirse zarara geçilir
     riskteki_para_45_gun: Decimal
 
 
@@ -97,6 +98,14 @@ def basabas_uye_sayisi(gider_toplam: Decimal | None, uye_basi_aylik_gelir: Decim
     if gider_toplam is None or not uye_basi_aylik_gelir:
         return None
     return math.ceil(Decimal(gider_toplam) / Decimal(uye_basi_aylik_gelir))
+
+
+def zarar_icin_kayip_uye(basabas_farki: int | None) -> int | None:
+    """Fark ≥ 0 ise fark + 1, değilse None. Başabaş tavanla (⌈gider / üye başı gelir⌉) bulunduğu için başabaştaki
+    üye sayısında kâr ≥ 0'dır; zarar başabaşın 1 altında başlar (proje sahibi kararı)."""
+    if basabas_farki is None or basabas_farki < 0:
+        return None
+    return basabas_farki + 1
 
 
 @dataclass
@@ -174,6 +183,7 @@ def finans_ozeti(db: Session, ay: date, bugun: date | None = None) -> FinansOzet
     kaynak, kaynak_ay = (gecen, gecen_ay) if erken else (bu, ay)
     aktif_bugun = aktif_uyeler(bugun)
     basabas = kaynak.basabas_uye_sayisi
+    fark = aktif_bugun - basabas if basabas is not None else None
 
     return FinansOzeti(
         ay=ay, bugun=bugun, gecen_gun=len(bu.gunluk), kasaya_giren=bu.kasaya_giren, gercek_gelir=bu.gercek_gelir,
@@ -182,6 +192,6 @@ def finans_ozeti(db: Session, ay: date, bugun: date | None = None) -> FinansOzet
         onceki_ay=gecen_ay, onceki_ay_kar_zarar=gecen.kar_zarar, onceki_ay_gider_girilmedi=gecen.gider_toplam is None,
         aktif_uye_sayisi=aktif_bugun, ortalama_aktif_uye=kaynak.ortalama_aktif,
         uye_basi_aylik_gelir=kaynak.uye_basi_aylik_gelir, basabas_uye_sayisi=basabas, basabas_kaynak_ay=kaynak_ay,
-        basabas_farki=aktif_bugun - basabas if basabas is not None else None,
+        basabas_farki=fark, zarar_icin_kayip_uye=zarar_icin_kayip_uye(fark),
         riskteki_para_45_gun=yenileme_paneli(db, PANEL_UFUK_GUN).toplam_riskteki_para,
     )

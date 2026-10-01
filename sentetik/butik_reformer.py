@@ -2,6 +2,7 @@
 
     python -m sentetik.butik_reformer --sadece-uret                     # veritabanına dokunmadan aylık özet
     python -m sentetik.butik_reformer --veritabani panosu_demo           # üret ve yükle (bir kez)
+    python -m sentetik.butik_reformer --veritabani panosu_demo --yeniden # yalnızca bu işletmeyi silip yeniden yükle
 
 S6 kalıbı (takvim günleriyle): paket karışımı ve fiyatları S6'dan (1 Aylık %45 2.500, 3 Aylık %25 6.000, 6 Aylık %15
 10.000, 12 Giriş %15 800 TL; giriş paketi 60 gün). Her üye ilk ziyaretinde paket alır; düzenli aralıklarla gelir
@@ -11,7 +12,7 @@ ISINMA_GUN önce başlar; yalnızca son 18 ayın (PENCERE_BAS..bugün) ziyaretle
 Giriş (check-in) ziyaretlerinin tutarı 0'dır (paket geliri çift sayılmaz). Her ay için giderler (HİPOTEZ) yüklenir.
 
 Hedef (proje sahibi): tipik bir ayda kâr, gerçek gelirin %10–25'i. Yalnızca bu dosyadaki üretici parametreleriyle
-sağlanır; modellere dokunulmaz.
+sağlanır; modellere dokunulmaz. Kalibrasyon gerekçesi (bırakma ve geliş hızı) Parametreler'deki yorumlardadır.
 """
 
 import argparse
@@ -31,7 +32,7 @@ from backtest.senaryolar import S6_GIRIS_SON_KULLANMA, S6_PAKETLER
 from models import Musteri, MusteriPaketi, Ziyaret
 from sentetik.katalog import ERKEK_ADLARI, KADIN_ADLARI, SOYADLARI
 from sentetik.uretici import KAYNAK_ETIKETI, _benzersiz_telefon, _uuid
-from sentetik.yukleyici import DemoDisiVeritabani, _demo_sahibi, baglanti_adresleri
+from sentetik.yukleyici import DemoDisiVeritabani, _demo_sahibi, baglanti_adresleri, temizle
 from servisler import gelir as g
 
 ISLETME_ADI = "[DEMO] Butik Reformer"
@@ -50,10 +51,14 @@ AYLIK_GIDER = {"kira": Decimal("40000.00"), "personel": Decimal("70000.00"), "fa
 class Parametreler:
     """Üretici parametreleri (kâr hedefi bunlarla ayarlanır)."""
     baslangic_uye: int = 85                    # ısınma başındaki üye sayısı (ilk 30 güne yayılır)
-    aylik_yeni_uye: float = 4.0                # Poisson geliş hızı (üye / 30 gün)
+    # Poisson geliş hızı (üye / 30 gün). b=290 ile üye ömrü kısalır; Little yasası L = λ·W gereği ~75 aktif üyeyi
+    # korumak için geliş hızı artırıldı (4.0'da kâr hedefi bozuluyor).
+    aylik_yeni_uye: float = 5.0
     ort_aralik_gun: float = 3.5                # μ_i ~ Gamma(şekil 3, bu ortalama); haftada ~2 ders
     birakma_a: float = 1.0                     # p ~ Beta(a, b): ziyaret başına bırakma
-    birakma_b: float = 399.0
+    # p ~ Beta(1, 290): a=1 iken E[(1-p)^n] = b/(b+n); μ ~ Gamma(3, ort. 3.5 gün) üzerinden ortalama alınınca
+    # yıllık elde tutma ≈ %68.7 (HFA 2025 ≈ %66.4; proje sahibi kararı 2026-10-01).
+    birakma_b: float = 290.0
     yenileme_orani: float = 0.95               # paket bittiğinde hayattaysa yenileme olasılığı
     kadin_orani: float = 0.85
     izin_orani: float = 0.70                   # WhatsApp izni veren üye oranı
@@ -221,11 +226,16 @@ class ButikZatenVar(RuntimeError):
     pass
 
 
-def yukle(veri: ButikVerisi, veritabani: str, ilerleme=print) -> uuid.UUID:
-    """İşletmeyi, üyeleri, izinleri, ziyaretleri, paketleri ve aylık giderleri tek işlemde yükler (panosu_app, RLS)."""
+def yukle(veri: ButikVerisi, veritabani: str, *, yeniden: bool = False, ilerleme=print) -> uuid.UUID:
+    """İşletmeyi, üyeleri, izinleri, ziyaretleri, paketleri ve aylık giderleri tek işlemde yükler (panosu_app, RLS).
+
+    yeniden=True ise önce yalnızca bu işletme (yönetici bağlantısıyla) silinir; diğer [DEMO] işletmelere dokunulmaz.
+    """
     yonetici_url, uygulama_url = baglanti_adresleri(veritabani)     # ad doğrulanmadan bağlantı yok
     yonetici, uygulama = create_engine(yonetici_url), create_engine(uygulama_url)
     try:
+        if yeniden:
+            ilerleme(f"Eski {ISLETME_ADI} silindi: {temizle(yonetici, ISLETME_ADI)} işletme")
         with yonetici.connect() as con:
             if con.scalar(text("SELECT count(*) FROM isletmeler WHERE ad = :a"), {"a": ISLETME_ADI}):
                 raise ButikZatenVar(f"{ISLETME_ADI} zaten var; yeniden yüklenmez.")
@@ -260,6 +270,7 @@ def main() -> None:
     a = argparse.ArgumentParser(prog="python -m sentetik.butik_reformer", description=f"{ISLETME_ADI} demosu")
     a.add_argument("--veritabani", help="hedef veritabanı; '_demo' ile bitmeli")
     a.add_argument("--sadece-uret", action="store_true", help="veritabanına yazma, yalnızca aylık özet")
+    a.add_argument("--yeniden", action="store_true", help=f"önce yalnızca {ISLETME_ADI}'ı silip yeniden yükle")
     arg = a.parse_args()
     if not arg.sadece_uret and not arg.veritabani:
         a.error("yükleme için --veritabani zorunludur; yalnızca üretmek için --sadece-uret")
@@ -268,7 +279,7 @@ def main() -> None:
     if arg.sadece_uret:
         return
     try:
-        yukle(veri, arg.veritabani)
+        yukle(veri, arg.veritabani, yeniden=arg.yeniden)
     except (DemoDisiVeritabani, ButikZatenVar) as hata:
         raise SystemExit(f"HATA: {hata}")
 

@@ -96,4 +96,5 @@ class FinansYanit(BaseModel):
     basabas_uye_sayisi: int | None
     basabas_kaynak_ay: date
     basabas_farki: int | None
+    zarar_icin_kayip_uye: int | None          # basabas_farki ≥ 0 ise fark + 1 (başabaşta kâr ≥ 0)
     riskteki_para_45_gun: Decimal

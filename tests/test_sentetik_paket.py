@@ -6,7 +6,7 @@ from decimal import Decimal
 import pytest
 
 from sentetik import paket_uretici, yukleyici
-from sentetik.paket_uretici import paket_doneminde_mi, paket_zinciri, paketleri_yukle
+from sentetik.paket_uretici import ay_listesi, gider_aylari, paket_doneminde_mi, paket_zinciri, paketleri_yukle
 from sentetik.yukleyici import DemoDisiVeritabani
 
 BUGUN = date(2026, 10, 1)
@@ -64,12 +64,38 @@ def test_paket_doneminde_mi_sure_yari_acik_giris_kapali():
     assert not paket_doneminde_mi(date(2026, 9, 1), [])
 
 
-@pytest.mark.parametrize("islev", ["cift_sayimi_duzelt", "demo_giderleri_ekle"])
+@pytest.mark.parametrize("islev", ["cift_sayimi_duzelt", "demo_giderleri_ekle", "gecmis_giderleri_ekle"])
 @pytest.mark.parametrize("ad", ["panosu", "panosu_test"])
 def test_cift_sayim_ve_giderler_kilidi(monkeypatch, islev, ad):
     def _yasak(*a, **k):
         raise AssertionError("Kilit, bağlantı kurulmadan önce devreye girmeliydi")
     monkeypatch.setattr(paket_uretici, "create_engine", _yasak)
-    args = (ad,) if islev == "cift_sayimi_duzelt" else (ad, date(2026, 10, 1))
+    args = (ad, date(2026, 10, 1)) if islev == "demo_giderleri_ekle" else (ad,)
     with pytest.raises(DemoDisiVeritabani):
         getattr(paket_uretici, islev)(*args)
+
+
+# ---------------------------------------------------------------- Geçmiş ayların giderleri
+
+def test_ay_listesi_yil_donumu_dahil():
+    assert ay_listesi(date(2024, 11, 17), date(2025, 2, 3)) == [
+        date(2024, 11, 1), date(2024, 12, 1), date(2025, 1, 1), date(2025, 2, 1)]
+    assert ay_listesi(date(2026, 10, 1), date(2026, 10, 31)) == [date(2026, 10, 1)]
+    assert ay_listesi(date(2026, 10, 5), date(2026, 9, 30)) == []
+
+
+def test_gider_aylari_baslangic_sabitiyle_kirpilir():
+    assert paket_uretici.DEMO_GIDER_BASLANGIC == date(2026, 3, 1)
+    aylar = gider_aylari(date(2024, 10, 14), BUGUN)                           # eski ilk ziyaret → Mart 2026
+    assert (aylar[0], aylar[-1], len(aylar)) == (date(2026, 3, 1), date(2026, 10, 1), 8)
+    assert gider_aylari(date(2026, 5, 20), BUGUN)[0] == date(2026, 5, 1)     # sonraki ilk ziyaret → kendi ayı
+
+
+@pytest.mark.parametrize("ad", ["panosu", "panosu_test", "", None])
+def test_gecmis_giderler_guncelle_kilidi(monkeypatch, ad):
+    def _yasak(*a, **k):
+        raise AssertionError("Kilit, bağlantı kurulmadan önce devreye girmeliydi")
+    monkeypatch.setattr(paket_uretici, "create_engine", _yasak)
+    monkeypatch.setattr(yukleyici, "create_engine", _yasak)
+    with pytest.raises(DemoDisiVeritabani):
+        paket_uretici.gecmis_giderleri_ekle(ad, guncelle=True)

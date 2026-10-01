@@ -11,7 +11,7 @@ from sqlalchemy.exc import DBAPIError
 
 from conftest import basliklar
 from models import IsletmeGideri
-from servisler.finans_servisi import finans_ozeti
+from servisler.finans_servisi import finans_ozeti, zarar_icin_kayip_uye
 
 D = Decimal
 BUGUN = datetime.now(timezone(timedelta(hours=3))).date()          # işletme saat dilimi: Europe/Istanbul
@@ -98,6 +98,7 @@ def test_finans_tamamlanmis_ay(istemci, iki_kiraci):
     assert f["basabas_uye_sayisi"] == 1                                                 # ⌈1500 / 3250⌉
     assert f["aktif_uye_sayisi"] == (1 if BUGUN < date(2026, 10, 16) else 0)
     assert f["basabas_farki"] == f["aktif_uye_sayisi"] - 1
+    assert f["zarar_icin_kayip_uye"] == (f["basabas_farki"] + 1 if f["basabas_farki"] >= 0 else None)
     assert D(f["riskteki_para_45_gun"]) == D("0")
 
 
@@ -106,6 +107,7 @@ def test_finans_gider_girilmedi(istemci, iki_kiraci):
     _finans_hazirla(istemci, a)
     f = istemci.get("/panel/finans", params={"ay": "2026-08"}, headers=basliklar(a)).json()
     assert (f["gider_toplam"], f["kar_zarar"], f["gider_girilmedi"], f["basabas_uye_sayisi"]) == (None, None, True, None)
+    assert (f["basabas_farki"], f["zarar_icin_kayip_uye"]) == (None, None)
     assert D(f["kasaya_giren"]) == D("3000.00") and D(f["gercek_gelir"]) == D("1500.00")   # 17–31 Ağustos
     assert all(g["gider_payi"] is None and g["net"] is None for g in f["gunluk"])
 
@@ -151,8 +153,15 @@ def test_finans_gecmis_ay_kaynak_kendisi(istemci, iki_kiraci, oturum):
 def test_finans_yanitinda_yeni_alanlar(istemci, iki_kiraci):
     a, _ = iki_kiraci
     f = istemci.get("/panel/finans", params={"ay": "2026-09"}, headers=basliklar(a)).json()
-    assert {"gecen_gun", "onceki_ay", "onceki_ay_kar_zarar", "onceki_ay_gider_girilmedi", "basabas_kaynak_ay"} <= f.keys()
+    assert {"gecen_gun", "onceki_ay", "onceki_ay_kar_zarar", "onceki_ay_gider_girilmedi", "basabas_kaynak_ay",
+            "zarar_icin_kayip_uye"} <= f.keys()
     assert f["basabas_kaynak_ay"] == "2026-09-01" and f["onceki_ay"] == "2026-08-01"
+
+
+@pytest.mark.parametrize("fark,beklenen", [(11, 12), (0, 1), (-3, None), (None, None)])
+def test_zarar_icin_kayip_uye(fark, beklenen):
+    # Başabaş tavanla bulunur: başabaştaki üyeyle kâr ≥ 0, zarar 1 altında başlar. None: başabaş yok.
+    assert zarar_icin_kayip_uye(fark) == beklenen
 
 
 def test_finans_ay_bicimi_422(istemci, iki_kiraci):

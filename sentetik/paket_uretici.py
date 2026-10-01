@@ -11,7 +11,10 @@ Mevcut demo verisi silinmez; yalnızca paket eklenir. Paketler üyenin VAR OLAN 
 Çift sayım kuralı (Adım 7): paketli işletmede giriş ziyaretlerinin toplam_tutar'ı 0'dır. Paket dönemine düşen
 (süre: [başlangıç, bitiş), giriş: [başlangıç, son kullanma]) ziyaretlerin tutarı 0 yapılır; kalem dökümü tutarlı kalsın
 diye kalemlerde indirim tam tutara eşitlenir ("paket kapsamında"). Paket yüklemesinin sonunda otomatik çalışır;
---cift-sayim ile tek başına da çalıştırılabilir. --giderler AY ile ayın demo giderleri eklenir (yoksa).
+--cift-sayim ile tek başına da çalıştırılabilir. --giderler AY ile ayın demo giderleri eklenir (yoksa);
+--gecmis-giderler ile max(ilk tamamlanmış ziyaretin ayı, DEMO_GIDER_BASLANGIC)'tan bugünün ayına kadar gideri olmayan her
+aya eklenir; --guncelle ile ayrıca mevcut demo gideri satırlarının tutarı DEMO_GIDERLERI'ne çekilir ve DEMO_GIDER_BASLANGIC'tan
+önceki demo gideri satırları silinir (elle girilmiş giderlere dokunulmaz).
 
 Kilit yükleyicininkiyle aynıdır: yalnızca adı "_demo" ile biten veritabanı; ad doğrulanmadan bağlantı kurulmaz.
 Yazma panosu_app rolüyle, işletmenin kiracı bağlamında (RLS altında) yapılır.
@@ -37,9 +40,15 @@ STUDYO_ADI = "[DEMO] Denge Pilates Stüdyosu"
 SAAT_DILIMI = ZoneInfo("Europe/Istanbul")
 
 
-# Demo giderleri (HİPOTEZ, Adım 7): kategori → TL
-DEMO_GIDERLERI = {"kira": Decimal("45000.00"), "personel": Decimal("60000.00"), "faturalar": Decimal("8000.00"),
-                  "diger": Decimal("5000.00")}
+# Demo giderleri (HİPOTEZ, Adım 7): kategori → TL. ~218 aktif üyeli stüdyo; Eylül 2026 geliri 415.892 TL ile kâr oranı
+# ≈ %20.6 (proje sahibi kararı 2026-10-01), Butik Reformer'ın %10–25 hedefiyle tutarlı.
+DEMO_GIDERLERI = {"kira": Decimal("90000.00"), "personel": Decimal("200000.00"), "faturalar": Decimal("25000.00"),
+                  "diger": Decimal("15000.00")}
+DEMO_GIDER_ACIKLAMASI = "Demo gideri (HİPOTEZ)"
+# Demo hikâyesinde stüdyo Panosu'yu Mart 2026'da kullanmaya başladı ve giderlerini o aydan itibaren girdi; daha eski
+# aylarda panel 'gider girilmedi' gösterir. Sabit 330.000 TL gider, sentetik verinin büyüme döneminde
+# (2024-10 – 2026-02) gerçekçi değil (proje sahibi kararı 2026-10-01).
+DEMO_GIDER_BASLANGIC = date(2026, 3, 1)
 
 
 class DemoPaketiZatenVar(RuntimeError):
@@ -108,6 +117,80 @@ def demo_giderleri_ekle(veritabani: str, ay: date, ilerleme=print) -> bool:
                     [{"ay": ay, "k": k, "t": t} for k, t in DEMO_GIDERLERI.items()])
     ilerleme(f"{STUDYO_ADI}: {ay:%Y-%m} demo giderleri eklendi ({sum(DEMO_GIDERLERI.values())} TL)")
     return True
+
+
+def ay_listesi(ilk: date, son: date) -> list[date]:
+    """ilk'in ayından son'un ayına kadar (ikisi dahil) her ayın ilk günü."""
+    aylar, ay = [], ilk.replace(day=1)
+    while ay <= son:
+        aylar.append(ay)
+        ay = (ay + timedelta(days=32)).replace(day=1)
+    return aylar
+
+
+def gider_aylari(ilk_ziyaret: date, bugun: date) -> list[date]:
+    """Demo gideri yüklenecek aylar: max(ilk ziyaret ayı, DEMO_GIDER_BASLANGIC)'tan bugünün ayına kadar."""
+    return ay_listesi(max(ilk_ziyaret.replace(day=1), DEMO_GIDER_BASLANGIC), bugun)
+
+
+def _eski_demo_giderlerini_sil(veritabani: str) -> int:
+    """DEMO_GIDER_BASLANGIC'tan önceki demo gideri satırlarını siler; silinen ay sayısını döndürür.
+
+    panosu_app'in iş verisini silme yetkisi bilinçli olarak yoktur; bu yüzden silme, yukleyici.temizle() gibi YÖNETİCİ
+    bağlantısıyla yapılır. Yönetici RLS'ye tabi olmadığından isletme_id filtresi burada elle yazılır (Kural 3'ün
+    temizle()'deki ile aynı istisnası). Ad doğrulanmadan bağlantı kurulmaz.
+    """
+    yonetici_url, _ = baglanti_adresleri(veritabani)
+    yonetici = create_engine(yonetici_url)
+    try:
+        with yonetici.begin() as con:
+            isletme_id = con.scalar(text("SELECT isletme_id FROM isletmeler WHERE ad = :a"), {"a": STUDYO_ADI})
+            if isletme_id is None:
+                raise RuntimeError(f"{STUDYO_ADI} bulunamadı; önce python -m sentetik ile demo verisini yükleyin.")
+            aylar = set(con.scalars(text(
+                "DELETE FROM isletme_giderleri WHERE isletme_id = :i AND ay < :bas AND aciklama = :a RETURNING ay"),
+                {"i": isletme_id, "bas": DEMO_GIDER_BASLANGIC, "a": DEMO_GIDER_ACIKLAMASI}))
+    finally:
+        yonetici.dispose()
+    return len(aylar)
+
+
+def gecmis_giderleri_ekle(veritabani: str, bugun: date | None = None, ilerleme=print, guncelle: bool = False) -> int:
+    """gider_aylari() aralığında gideri olmayan her aya DEMO_GIDERLERI'ni ekler (tek işlem, kiracı bağlamında).
+    Eklenen ay sayısını döndürür; tekrar çalıştırılınca 0.
+
+    guncelle=True ise önce DEMO_GIDER_BASLANGIC'tan önceki demo gideri satırları (yönetici bağlantısıyla, ayrı işlemde)
+    silinir; sonra aralıktaki açıklaması DEMO_GIDER_ACIKLAMASI olan satırların tutarı kategori bazında DEMO_GIDERLERI'ne
+    çekilir. Başka açıklamalı (elle girilmiş) giderlere dokunulmaz. İki işlem de idempotenttir."""
+    bugun = bugun or datetime.now(SAAT_DILIMI).date()
+    silinen = _eski_demo_giderlerini_sil(veritabani) if guncelle else 0
+    with _studyo_islemi(veritabani) as con:
+        ilk = con.scalar(text("SELECT min((ziyaret_zamani AT TIME ZONE 'Europe/Istanbul')::date) FROM ziyaretler "
+                              "WHERE durum = 'tamamlandi'"))
+        if ilk is None:
+            ilerleme(f"{STUDYO_ADI}: tamamlanmış ziyaret yok, gider eklenmedi")
+            return 0
+        aylar = gider_aylari(ilk, bugun)
+        guncellenen: set[date] = set()
+        if guncelle:
+            for k, t in DEMO_GIDERLERI.items():
+                guncellenen.update(con.scalars(text(
+                    "UPDATE isletme_giderleri SET tutar = :t WHERE kategori = :k AND aciklama = :a "
+                    "AND ay BETWEEN :ilk AND :son AND tutar <> :t RETURNING ay"),
+                    {"t": t, "k": k, "a": DEMO_GIDER_ACIKLAMASI, "ilk": aylar[0], "son": aylar[-1]}))
+        dolu = set(con.scalars(text("SELECT DISTINCT ay FROM isletme_giderleri")))
+        eksik = [ay for ay in aylar if ay not in dolu]
+        if eksik:
+            con.execute(text("INSERT INTO isletme_giderleri (ay, kategori, tutar, aciklama) VALUES (:ay, :k, :t, :a)"),
+                        [{"ay": ay, "k": k, "t": t, "a": DEMO_GIDER_ACIKLAMASI}
+                         for ay in eksik for k, t in DEMO_GIDERLERI.items()])
+    aralik = f" ({eksik[0]:%Y-%m} – {eksik[-1]:%Y-%m})" if eksik else ""
+    ilerleme(f"{STUDYO_ADI}: {len(eksik)} ay için demo giderleri eklendi{aralik}")
+    if guncelle:
+        ilerleme(f"{STUDYO_ADI}: {len(guncellenen)} ayın demo giderleri güncellendi "
+                 f"(aylık {sum(DEMO_GIDERLERI.values())} TL)")
+        ilerleme(f"{STUDYO_ADI}: {DEMO_GIDER_BASLANGIC:%Y-%m} öncesi {silinen} ayın demo giderleri silindi")
+    return len(eksik)
 
 
 def paket_zinciri(tarihler: list[date], tur_no: int, bugun: date) -> list[dict]:
@@ -186,13 +269,21 @@ def main() -> None:
     a.add_argument("--tohum", type=int, default=42)
     a.add_argument("--cift-sayim", action="store_true", help="yalnızca çift sayım düzeltmesini çalıştır")
     a.add_argument("--giderler", metavar="YYYY-AA", help="yalnızca bu ayın demo giderlerini ekle (yoksa)")
+    a.add_argument("--gecmis-giderler", action="store_true",
+                   help="max(ilk ziyaret ayı, DEMO_GIDER_BASLANGIC)'tan bugünün ayına kadar gideri olmayan her aya demo giderlerini ekle")
+    a.add_argument("--guncelle", action="store_true",
+                   help="--gecmis-giderler ile: demo giderlerini DEMO_GIDERLERI'ne güncelle, DEMO_GIDER_BASLANGIC öncesini sil")
     arg = a.parse_args()
+    if arg.guncelle and not arg.gecmis_giderler:
+        a.error("--guncelle yalnızca --gecmis-giderler ile kullanılır")
     try:
         if arg.cift_sayim:
             cift_sayimi_duzelt(arg.veritabani)
         elif arg.giderler:
             yil, ay = arg.giderler.split("-")
             demo_giderleri_ekle(arg.veritabani, date(int(yil), int(ay), 1))
+        elif arg.gecmis_giderler:
+            gecmis_giderleri_ekle(arg.veritabani, guncelle=arg.guncelle)
         else:
             paketleri_yukle(arg.veritabani, arg.tohum)
     except (DemoDisiVeritabani, DemoPaketiZatenVar) as hata:

@@ -62,6 +62,7 @@
       <div class="not">
         {% if finans.basabas_farki is none %}Başabaş için gider ve gelir gerekir.
         {% elif finans.basabas_farki >= 0 %}Başabaşın {{ finans.basabas_farki }} üye üzerinde.
+        {{ finans.zarar_icin_kayip_uye }} üye kaybederseniz zarara geçersiniz.
         {% else %}Başabaşın {{ -finans.basabas_farki }} üye altında.{% endif %}
         Başabaş {{ ay_adi(finans.basabas_kaynak_ay) }} verisiyle hesaplandı.
       </div>
