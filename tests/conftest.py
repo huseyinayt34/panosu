@@ -10,6 +10,7 @@ adı TEST_VERITABANI yapılarak türetilir. Ortam değişkeni her zaman öncelik
 """
 
 import os
+import secrets
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -52,6 +53,8 @@ def pytest_configure(config):
     # Ortam değişkenleri .env dosyasından önceliklidir; uygulama test veritabanını kullanır.
     os.environ["PANOSU_VERITABANI_URL"] = app_url
     os.environ["PANOSU_ORTAM"] = "gelistirme"
+    # Testler için rastgele imza anahtarı (ortamda tanımlı değilse); .env'deki gerçek anahtar kullanılmaz.
+    os.environ.setdefault("PANOSU_JWT_GIZLI", secrets.token_urlsafe(32))
 
 
 @dataclass(frozen=True)
@@ -91,7 +94,7 @@ def _kiraci_olustur(con, ad: str) -> Kiraci:
 
 def _kiraci_temizle(con, k: Kiraci) -> None:
     i = {"i": str(k.isletme_id)}
-    for tablo in ("isletme_giderleri", "yenileme_riskleri", "musteri_paketleri", "ziyaret_kalemleri", "ziyaretler", "musteriler",
+    for tablo in ("davetler", "isletme_giderleri", "yenileme_riskleri", "musteri_paketleri", "ziyaret_kalemleri", "ziyaretler", "musteriler",
                   "hizmetler", "uyelikler"):
         con.execute(text(f"DELETE FROM {tablo} WHERE isletme_id = :i"), i)
     con.execute(text("DELETE FROM isletmeler WHERE isletme_id = :i"), i)
@@ -143,8 +146,9 @@ def calisan(admin_engine, iki_kiraci):
 
 
 def basliklar(kiraci: Kiraci) -> dict[str, str]:
-    """GEÇİCİ başlık tabanlı kimlik (yalnız geliştirme ortamı)."""
-    return {"X-Kullanici-Id": str(kiraci.kullanici_id), "X-Isletme-Id": str(kiraci.isletme_id)}
+    """Kiracı için imzalanmış erişim tokenı (kullanıcı + seçili işletme)."""
+    from servisler.kimlik import erisim_tokeni_uret
+    return {"Authorization": f"Bearer {erisim_tokeni_uret(kiraci.kullanici_id, kiraci.isletme_id)}"}
 
 
 @pytest.fixture()

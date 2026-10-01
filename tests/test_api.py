@@ -11,10 +11,9 @@ def istemci():
 
 
 def _basliklar(kiraci, isletme_id=None):
-    return {
-        "X-Kullanici-Id": str(kiraci.kullanici_id),
-        "X-Isletme-Id": str(isletme_id or kiraci.isletme_id),
-    }
+    """Kiracının kullanıcısı için imzalı erişim tokenı; isl = isletme_id (verilmezse kiracının işletmesi)."""
+    from servisler.kimlik import erisim_tokeni_uret
+    return {"Authorization": f"Bearer {erisim_tokeni_uret(kiraci.kullanici_id, isletme_id or kiraci.isletme_id)}"}
 
 
 def test_saglik_ucu_calisir(istemci):
@@ -36,5 +35,5 @@ def test_uye_olmayan_kullanici_baska_isletmeye_giremez(istemci, iki_kiraci):
     assert yanit.status_code == 403
 
 
-def test_kimlik_basliklari_olmadan_422(istemci):
-    assert istemci.get("/musteriler").status_code == 422
+def test_kimlik_basliklari_olmadan_401(istemci):
+    assert istemci.get("/musteriler").status_code == 401

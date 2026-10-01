@@ -3,7 +3,7 @@
 Tekrar eden müşterisi olan işletmeler (salon, spor salonu, klinik vb.) için **çok kiracılı (multi-tenant) müşteri analitiği backend'i**.
 Amaç: hangi müşterinin kaybedilmek üzere olduğunu (churn) olasılıksal olarak tahmin etmek ve bunu **"Riskteki Para"** olarak göstermek.
 
-> Durum: **Faz 1: çekirdek backend tamamlandı** (veritabanı, güvenlik katmanı, müşteri/hizmet/ziyaret API'si, sentetik veri motoru, testler). Analitik modüller yol haritasında.
+> Durum: **Backend canlıya hazırlanıyor**: çok kiracılı veritabanı ve RLS, müşteri/hizmet/ziyaret/paket API'si, MBG/NBD tabanlı yenileme riski ve Riskteki Para, finans paneli ve haftalık rapor, **gerçek kimlik doğrulama** (Argon2id parola, JWT erişim tokenı, tek kullanımlık yenileme tokenı, davet kodları). Sıradaki: web paneli (Next.js).
 
 ---
 
@@ -67,6 +67,24 @@ Taban değer, çok düzenli müşterilerde $\sigma \to 0$ olduğunda riskin ani 
 ---
 
 ## API uçları
+
+Kiracı uçları `Authorization: Bearer <erisim_tokeni>` ister; işletme kimliği yalnızca imzalı tokendan okunur.
+
+| Metot | Yol | Açıklama |
+|---|---|---|
+| `POST` | `/kayit` | Hesap + işletme açma (yalnızca açık kayıt etkinken; aynı e-posta → `409`) |
+| `POST` | `/kayit/davet` | Davet koduyla hesap açma (davetteki rolle üye olur) |
+| `POST` | `/oturum/giris` | E-posta + parola → token çifti (hatalı → `401`; 5 hatada 15 dk kilit) |
+| `POST` | `/oturum/yenile` | Yenileme tokenıyla yeni çift (tek kullanımlık; tekrar kullanımda oturum ailesi iptal) |
+| `POST` | `/oturum/cikis` | Oturum ailesini kapatır |
+| `POST` | `/oturum/isletme-sec` | Üyesi olunan işletmeyi seçer, yeni erişim tokenı |
+| `GET` | `/ben` | Kullanıcı bilgisi ve üyelikler |
+| `POST` | `/davetler` | Tek kullanımlık davet kodu (sahip/yönetici; yönetici yalnızca çalışan davet eder) |
+| `GET` | `/davetler` | Açık davetler (kod gösterilmez) |
+| `POST` | `/davetler/{id}/iptal` | Daveti iptal eder |
+| `POST` | `/davetler/kabul` | Giriş yapmış kullanıcı davetle üye olur |
+| `GET` | `/uyeler` | İşletmenin üyeleri ve rolleri (sahip/yönetici) |
+| `DELETE` | `/uyeler/{kullanici_id}` | Üyeliği siler (sahip; son sahip silinemez) |
 
 | Metot | Yol | Açıklama |
 |---|---|---|
@@ -145,7 +163,7 @@ Tamamlanan: çok kiracılı şema ve RLS, Alembic baseline, müşteri/hizmet/ziy
 | 5 | Skor motoru v2: BG/NBD + Gamma-Gamma ile Riskteki Para |
 | 6 | Backtest: V1 ve BG/NBD'nin sentetik veride karşılaştırılması |
 | 7 | Panel API'si: Riskteki Para listesi, işletme özeti |
-| 8 | Gerçek kimlik doğrulama ve işletme kaydı (öncesinde CSV içe aktarma) |
+| 8 | Gerçek kimlik doğrulama ve işletme kaydı (tamamlandı) |
 | 9 | Web paneli (Next.js) ve canlı demo |
 | 10 | İzin, mesaj ve geri kazanım ölçümü |
 | 11 | Yayına alma: Docker, CI, sunucu, ödeme |
