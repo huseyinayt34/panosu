@@ -6,7 +6,7 @@ from decimal import Decimal
 import pytest
 
 from sentetik import paket_uretici, yukleyici
-from sentetik.paket_uretici import paket_zinciri, paketleri_yukle
+from sentetik.paket_uretici import paket_doneminde_mi, paket_zinciri, paketleri_yukle
 from sentetik.yukleyici import DemoDisiVeritabani
 
 BUGUN = date(2026, 10, 1)
@@ -48,3 +48,28 @@ def test_kilit_baglanmadan_reddeder(monkeypatch, ad):
     monkeypatch.setattr(yukleyici, "create_engine", _yasak)
     with pytest.raises(DemoDisiVeritabani):
         paketleri_yukle(ad)
+
+
+# ---------------------------------------------------------------- Çift sayım (Adım 7)
+
+def test_paket_doneminde_mi_sure_yari_acik_giris_kapali():
+    paketler = [("sure", date(2026, 9, 1), date(2026, 10, 1)), ("giris", date(2026, 10, 5), date(2026, 12, 4))]
+    assert paket_doneminde_mi(date(2026, 9, 1), paketler)
+    assert paket_doneminde_mi(date(2026, 9, 30), paketler)
+    assert not paket_doneminde_mi(date(2026, 10, 1), paketler)            # süre bitiş günü dönem dışı
+    assert not paket_doneminde_mi(date(2026, 10, 3), paketler)            # paketler arası boşluk: ek satış
+    assert paket_doneminde_mi(date(2026, 12, 4), paketler)                # giriş son kullanma günü dahil
+    assert not paket_doneminde_mi(date(2026, 8, 31), paketler)
+    assert paket_doneminde_mi(date(2030, 1, 1), [("giris", date(2026, 1, 1), None)])   # son kullanmasız
+    assert not paket_doneminde_mi(date(2026, 9, 1), [])
+
+
+@pytest.mark.parametrize("islev", ["cift_sayimi_duzelt", "demo_giderleri_ekle"])
+@pytest.mark.parametrize("ad", ["panosu", "panosu_test"])
+def test_cift_sayim_ve_giderler_kilidi(monkeypatch, islev, ad):
+    def _yasak(*a, **k):
+        raise AssertionError("Kilit, bağlantı kurulmadan önce devreye girmeliydi")
+    monkeypatch.setattr(paket_uretici, "create_engine", _yasak)
+    args = (ad,) if islev == "cift_sayimi_duzelt" else (ad, date(2026, 10, 1))
+    with pytest.raises(DemoDisiVeritabani):
+        getattr(paket_uretici, islev)(*args)

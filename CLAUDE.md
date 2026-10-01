@@ -23,6 +23,7 @@ main.py → rotalar/ → (bagimliliklar.py, servisler/, semalar/) → models.py 
 - `sentetik/`: BG/NBD tabanlı sentetik veri üreticisi. Yükleyici yalnızca adı `_demo` ile biten veritabanına yazar.
 - `analitik/`: modeller (V1, BG/NBD, MBG/NBD, Gamma-Gamma, yenileme simülasyonu); veritabanı bilmez.
 - `backtest/`: sentetik senaryolarda model karşılaştırması (S0–S6); veritabanı yok.
+- `sablonlar/`: Jinja2 HTML şablonları (haftalık rapor).
 
 ## Değiştirilemez kurallar
 1. `create_all` / `drop_all` / `reflect` kullanılmaz. `alembic/` dışında DDL yazılmaz.
@@ -47,7 +48,7 @@ main.py → rotalar/ → (bagimliliklar.py, servisler/, semalar/) → models.py 
 |---|---|---|
 | `panosu` | Canlı; yalnızca gerçek işletme verisi | Yalnızca salt-okunur sorgu. Her yazma işlemi açık onay ister. `alembic upgrade` asla çalıştırılmaz (yalnızca onaylı `stamp`). |
 | `panosu_test` | pytest | Silinip `alembic upgrade head` ile yeniden kurulabilir |
-| `panosu_demo` | Sentetik veri, demo, backtest | Kuruldu; 4 [DEMO] işletme, sentetik veri; [DEMO] Denge Pilates'te üyelik paketleri ve yenileme riskleri. Yükleyici yalnızca _demo adlarına yazar. |
+| `panosu_demo` | Sentetik veri, demo, backtest | Kuruldu; 4 [DEMO] işletme, sentetik veri; [DEMO] Denge Pilates'te üyelik paketleri, yenileme riskleri ve Ekim 2026 demo giderleri (paket dönemi ziyaret tutarları 0). Yükleyici yalnızca _demo adlarına yazar. |
 
 Sentetik veri ASLA `panosu`'ya yazılmaz.
 
@@ -65,6 +66,8 @@ uvicorn main:app --reload                        # geliştirme sunucusu, /docs
 .\.venv\Scripts\python.exe -m backtest --tohum-sayisi 2 # hızlı deneme
 
 .\.venv\Scripts\python.exe -m sentetik.paket_uretici --veritabani panosu_demo    # demo stüdyoya paket (bir kez)
+.\.venv\Scripts\python.exe -m sentetik.paket_uretici --veritabani panosu_demo --giderler 2026-10   # demo giderleri
+.\.venv\Scripts\python.exe -m servisler.rapor_uret --veritabani panosu_demo --isletme <uuid> --cikti raporlar/haftalik.html
 .\.venv\Scripts\python.exe -m servisler.yenileme_calistir --veritabani panosu_demo --isletme <uuid>  # yenileme riski (_demo/_test)
 ```
 Test adresleri: `PANOSU_TEST_APP_URL` / `PANOSU_TEST_ADMIN_URL` ortamda tanımlıysa onlar kullanılır; değilse
@@ -88,8 +91,8 @@ gösterecek şekilde `alembic upgrade head`.
 | 5a | Model kütüphanesi: V1, BG/NBD, MBG/NBD, Gamma-Gamma, Riskteki Para (veritabanı yok; tasarım: `docs/adim-5-6-tasarim.md`) | Tamam |
 | 6 | Backtest: V1, BG/NBD ve MBG/NBD'nin sentetik veride (S0–S5) karşılaştırılması (ROC AUC, kalibrasyon); sonuç: `docs/backtest-sonuclari.md` | Tamam |
 | 5b | Sözleşmeli üyelik (paketler), yenileme riski (M3 + simülasyon), S6 backtest, panel ucu (`docs/adim-5b-tasarim.md`) | Tamam |
-| 5c | Yenileme modelinin gerçek yenileme verisiyle kalibrasyonu (Faz 0 verisi gelince) | Bekliyor |
-| 7 | Panel API'si: Riskteki Para listesi, işletme özeti | Planlandı |
+| 5c | Yenileme modelinin gerçek yenileme verisiyle kalibrasyonu (Faz 0 verisi gelince). Test edilecek hipotezler (proje sahibinin gözlemi): (1) aktif üyelerin yenileme oranı ρ %90'ın üzerinde; (2) önceki yenileme sayısı yenilemenin güçlü habercisi; (3) az gelip yine de yenileyen bir grup var ve model onlara yanlış alarm veriyor olabilir. S6'da Riskteki Para'nın %13 düşük çıkmasının nedeni ρ = 1 varsayımıdır. | Bekliyor |
+| 7 | Panel: sessiz üyeler, gelir ve kâr özeti (giderler, başabaş), haftalık rapor (`docs/adim-7-tasarim.md`) | Tamam |
 | 4b | CSV içe aktarma (Faz 0'dan gerçek veri formatı gelince, 8'den önce) | Bekliyor |
 | 8 | Gerçek kimlik doğrulama + işletme kaydı | Planlandı |
 | 9 | Web paneli (Next.js), panosu_demo ile canlı demo | Planlandı |
@@ -98,6 +101,9 @@ gösterecek şekilde `alembic upgrade head`.
 
 - Araştırma rafı (zaman kalırsa): RFM/kohort, sağkalım analizi (Kaplan-Meier, Cox), XGBoost + SHAP,
   kampanya simülatörü / A-B güç analizi.
+  - Kafe/restoran modülü (menü fotoğrafından ürün çıkarma, menü mühendisliği, enflasyon/marj alarmı). Başlama
+    koşulu: stüdyo ürünü en az bir gerçek stüdyoda çalışıyor ve bir kafe ürün bazında satış verisi verebiliyor.
+  - Veteriner klinikleri: aşı/kontrol döngüsü (ileride değerlendirilecek).
 - Faz 0: işletmelerle talep ve veri formatı görüşmeleri. Kod değildir; proje sahibi yürütür.
 - Yol haritasının tek kaynağı bu dosyadır. README yalnızca kısa bir özet verir.
 - Matematik kararları (model seçimi, varsayımlar) proje sahibinindir. 5a/6'nın onaylı tasarımı

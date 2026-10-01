@@ -91,7 +91,7 @@ def _kiraci_olustur(con, ad: str) -> Kiraci:
 
 def _kiraci_temizle(con, k: Kiraci) -> None:
     i = {"i": str(k.isletme_id)}
-    for tablo in ("yenileme_riskleri", "musteri_paketleri", "ziyaret_kalemleri", "ziyaretler", "musteriler",
+    for tablo in ("isletme_giderleri", "yenileme_riskleri", "musteri_paketleri", "ziyaret_kalemleri", "ziyaretler", "musteriler",
                   "hizmetler", "uyelikler"):
         con.execute(text(f"DELETE FROM {tablo} WHERE isletme_id = :i"), i)
     con.execute(text("DELETE FROM isletmeler WHERE isletme_id = :i"), i)

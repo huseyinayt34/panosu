@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>{{ isletme_adi }} · Haftalık Rapor · {{ tarih(bugun) }}</title>
+<style>
+  @page { size: A4; margin: 14mm 12mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Arial, sans-serif; color: #1d2733; font-size: 10.5pt; margin: 0; }
+  .sayfa { max-width: 186mm; margin: 0 auto; padding: 8mm 0; }
+  header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #1d2733;
+           padding-bottom: 4px; margin-bottom: 12px; }
+  h1 { font-size: 17pt; margin: 0; }
+  .tarih { color: #556; }
+  .kutular { display: flex; gap: 8px; margin-bottom: 14px; }
+  .kutu { flex: 1; border: 1px solid #c9d1da; border-radius: 6px; padding: 8px 10px; }
+  .kutu .etiket { font-size: 8.5pt; color: #556; text-transform: uppercase; letter-spacing: .03em; }
+  .kutu .deger { font-size: 15pt; font-weight: 600; margin-top: 3px; }
+  .kutu .not { font-size: 8.5pt; color: #556; margin-top: 2px; }
+  .zarar { color: #b42318; }
+  .kar { color: #146c43; }
+  h2 { font-size: 11.5pt; margin: 14px 0 5px; }
+  table { width: 100%; border-collapse: collapse; font-size: 9pt; page-break-inside: avoid; }
+  th, td { border-bottom: 1px solid #e1e6eb; padding: 3px 4px; text-align: left; }
+  th { background: #f2f4f7; font-weight: 600; }
+  td.sayi, th.sayi { text-align: right; white-space: nowrap; }
+  .bos { color: #556; font-style: italic; }
+  footer { margin-top: 14px; font-size: 8.5pt; color: #556; border-top: 1px solid #c9d1da; padding-top: 5px; }
+</style>
+</head>
+<body>
+<div class="sayfa">
+  <header>
+    <h1>{{ isletme_adi }}</h1>
+    <div class="tarih">Haftalık rapor · {{ tarih(bugun) }}</div>
+  </header>
+
+  <section class="kutular">
+    <div class="kutu">
+      {% if finans.gider_girilmedi %}
+        <div class="etiket">Bu ay gerçek gelir</div>
+        <div class="deger">{{ para(finans.gercek_gelir) }}</div>
+        <div class="not">Gider girilmedi; kâr/zarar hesaplanamadı.</div>
+      {% else %}
+        <div class="etiket">Bu ayın kâr/zararı</div>
+        <div class="deger {{ 'zarar' if finans.kar_zarar < 0 else 'kar' }}">{{ para(finans.kar_zarar) }}</div>
+        <div class="not">{{ tarih(finans.ay) }} – {{ tarih(finans.bugun) }}: gelir {{ para(finans.gercek_gelir) }},
+          gider {{ para(finans.gider_bugune_kadar) }}</div>
+      {% endif %}
+    </div>
+    <div class="kutu">
+      <div class="etiket">Önümüzdeki 45 günde riskteki para</div>
+      <div class="deger">{{ para(finans.riskteki_para_45_gun) }}</div>
+      <div class="not">Yenilenmeme olasılığı × paket ücreti</div>
+    </div>
+    <div class="kutu">
+      <div class="etiket">Aktif üye / başabaş üye</div>
+      <div class="deger">{{ finans.aktif_uye_sayisi }} / {{ finans.basabas_uye_sayisi if finans.basabas_uye_sayisi is not none else '—' }}</div>
+      <div class="not">
+        {% if finans.basabas_farki is none %}Başabaş için gider ve gelir gerekir.
+        {% elif finans.basabas_farki >= 0 %}Başabaşın {{ finans.basabas_farki }} üye üzerinde.
+        {% else %}Başabaşın {{ -finans.basabas_farki }} üye altında.{% endif %}
+      </div>
+    </div>
+  </section>
+
+  <h2>Önümüzdeki 45 günde yenilemesi riskli 10 üye</h2>
+  {% if yenilemeler %}
+  <table>
+    <thead><tr><th>Üye</th><th>Telefon</th><th>Paket</th><th>Bitiş</th><th class="sayi">Yenileme olasılığı</th>
+      <th class="sayi">Paket ücreti</th><th class="sayi">Riskteki para</th></tr></thead>
+    <tbody>
+    {% for o in yenilemeler %}
+      <tr><td>{{ o.ad_soyad }}</td><td>{{ o.telefon_e164 or '—' }}</td><td>{{ o.paket_adi }}</td>
+        <td>{{ tarih(o.bitis_tarihi) }}</td><td class="sayi">{{ yuzde(o.p_yenileme) }}</td>
+        <td class="sayi">{{ para(o.yenileme_tutari) }}</td><td class="sayi">{{ para(o.riskteki_para) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="bos">Önümüzdeki 45 günde biten paket yok.</p>{% endif %}
+
+  <h2>En değerli 10 sessiz üye</h2>
+  {% if sessizler %}
+  <table>
+    <thead><tr><th>Üye</th><th>Telefon</th><th>Paket</th><th>Son ziyaret</th><th class="sayi">Gelmediği gün</th>
+      <th class="sayi">Aktif olma olasılığı</th><th class="sayi">Riskteki para</th></tr></thead>
+    <tbody>
+    {% for o in sessizler %}
+      <tr><td>{{ o.ad_soyad }}</td><td>{{ o.telefon_e164 or '—' }}</td><td>{{ o.paket_adi }}</td>
+        <td>{{ tarih(o.son_ziyaret_gunu) }}</td>
+        <td class="sayi">{{ o.son_ziyaretten_gecen_gun if o.son_ziyaretten_gecen_gun is not none else '—' }}</td>
+        <td class="sayi">{{ yuzde(o.p_hayatta_simdi) }}</td><td class="sayi">{{ para(o.riskteki_para) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="bos">Sessiz üye yok.</p>{% endif %}
+
+  <footer>Olasılıklar model tahminidir; gerçek yenileme verisiyle kalibre edilmemiştir.</footer>
+</div>
+</body>
+</html>

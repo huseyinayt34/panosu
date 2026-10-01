@@ -136,3 +136,31 @@ def yenileme_paneli(db: Session, gun: int) -> YenilemePaneli:
     ).mappings()]
     toplam = sum((o["riskteki_para"] for o in ogeler), Decimal("0.00"))
     return YenilemePaneli(bugun=bugun, gun=gun, toplam_riskteki_para=toplam, paket_sayisi=len(ogeler), ogeler=ogeler)
+
+
+@dataclass
+class SessizUyeler:
+    esik: Decimal
+    uye_sayisi: int
+    toplam_riskteki_para: Decimal
+    ogeler: list[dict]
+
+
+_SESSIZ_SUTUNLARI = (
+    "musteri_id, ad_soyad, telefon_e164, whatsapp_izni_var, paket_id, paket_adi, tur, bitis_tarihi, kalan_gun, "
+    "kalan_giris, son_ziyaret, son_ziyaretten_gecen_gun, p_hayatta_simdi, p_yenileme, paket_ucreti, riskteki_para, "
+    "hesaplama_tarihi"
+)
+
+
+def sessiz_uyeler(db: Session, esik: Decimal) -> SessizUyeler:
+    """Aktif paketi olup P(hayatta şimdi) < esik olan üyeler; riskteki_para azalan, eşitlikte son ziyaretten bu yana
+    geçen gün azalan (hiç gelmemiş üye en başta)."""
+    ogeler = [dict(s) for s in db.execute(
+        text(f"SELECT {_SESSIZ_SUTUNLARI} FROM v_sessiz_uyeler WHERE p_hayatta_simdi < :esik "
+             "ORDER BY riskteki_para DESC, son_ziyaretten_gecen_gun DESC NULLS FIRST, paket_id"),
+        {"esik": esik},
+    ).mappings()]
+    toplam = sum((o["riskteki_para"] for o in ogeler), Decimal("0.00"))
+    return SessizUyeler(esik=esik, uye_sayisi=len({o['musteri_id'] for o in ogeler}), toplam_riskteki_para=toplam,
+                        ogeler=ogeler)

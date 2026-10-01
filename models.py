@@ -216,3 +216,19 @@ class YenilemeRiski(Base):
     riskteki_para: Mapped[Decimal] = mapped_column(
         Numeric(12, 2), Computed("ROUND((1 - p_yenileme) * yenileme_tutari, 2)", persisted=True))
     hesaplanma_zamani: Mapped[datetime] = _olusturma_zamani()
+
+
+class IsletmeGideri(Base):
+    """Aylık sabit gider (0003). ay = ayın ilk günü; (isletme_id, ay, kategori) tekil."""
+    __tablename__ = "isletme_giderleri"
+    __table_args__ = (UniqueConstraint("isletme_id", "ay", "kategori"),)
+
+    gider_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=_UUID_VARSAYILAN)
+    isletme_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("isletmeler.isletme_id"), server_default=_KIRACI_VARSAYILAN)
+    ay: Mapped[date] = mapped_column(Date)
+    kategori: Mapped[str] = mapped_column(Text)
+    tutar: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    aciklama: Mapped[str | None] = mapped_column(Text)
+    olusturma_zamani: Mapped[datetime] = _olusturma_zamani()
+    guncelleme_zamani: Mapped[datetime] = _guncelleme_zamani()
