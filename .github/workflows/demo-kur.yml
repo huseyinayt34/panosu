@@ -1,0 +1,54 @@
+# Yayındaki demo veritabanını (Neon panosu_demo) baştan kurar (Adım 11, K24; docs/adim-11-tasarim.md).
+# Yalnızca elle ve onay kelimesiyle: şema (alembic upgrade head) → panosu_app parolası → demo_kur.
+name: Demo kurulumu
+
+on:
+  workflow_dispatch:
+    inputs:
+      onay:
+        description: "Demo verisi silinip baştan kurulur. Onay için KUR yazın."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: demo-veritabani
+  cancel-in-progress: false
+
+jobs:
+  kur:
+    if: inputs.onay == 'KUR'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PANOSU_VERITABANI_URL: ${{ secrets.PANOSU_VERITABANI_URL }}
+      PANOSU_MIGRASYON_URL: ${{ secrets.PANOSU_MIGRASYON_URL }}
+      TZ: Europe/Istanbul
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: requirements-uretim.txt
+
+      - name: Bağımlılıklar
+        run: pip install -r requirements-uretim.txt
+
+      # Ayarlar doğrulaması PANOSU_JWT_GIZLI ister; kurulum kullanmaz. Her çalıştırmada rastgele, maskeli.
+      - name: Geçici JWT gizlisi
+        run: |
+          gizli="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')"
+          echo "::add-mask::$gizli"
+          echo "PANOSU_JWT_GIZLI=$gizli" >> "$GITHUB_ENV"
+
+      - name: Şema (alembic upgrade head)
+        run: python -m alembic upgrade head
+
+      - name: Demo kurulumu
+        env:
+          PANOSU_DEMO_PAROLA: ${{ secrets.PANOSU_DEMO_PAROLA }}
+        run: python -m sentetik.demo_kur --veritabani panosu_demo --uygulama-parolasi-ayarla

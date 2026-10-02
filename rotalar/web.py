@@ -131,6 +131,13 @@ def _sayfa(request: Request, sablon: str, baglam: dict | None = None, oturum: We
     return _onbelleksiz(yanit)
 
 
+def _demo_girisi() -> dict:
+    """K26: iki demo değişkeni de tanımlıysa giriş formu demo hesabıyla dolu gelir; biri eksikse boş."""
+    if not ayarlar.demo_giris_eposta or ayarlar.demo_giris_parola is None:
+        return {}
+    return {"demo_eposta": ayarlar.demo_giris_eposta, "demo_parola": ayarlar.demo_giris_parola.get_secret_value()}
+
+
 def _mesaj_sayfasi(request: Request, mesaj: str, durum: int) -> Response:
     return _sayfa(request, "web/taban.html", {"mesaj": mesaj}, durum=durum)
 
@@ -201,7 +208,7 @@ def giris_formu(request: Request, db: Session = Depends(get_db)):
     try:
         oturum = web_kimligi(request, db)
     except WebKesinti:
-        return _cerezleri_sil(_sayfa(request, "web/giris.html"))
+        return _cerezleri_sil(_sayfa(request, "web/giris.html", _demo_girisi()))
     yanit = _yonlendir("/pano")
     if oturum.yeni_cift is not None:
         _cerezleri_yaz(yanit, oturum.yeni_cift)
@@ -216,8 +223,9 @@ def giris_gonder(request: Request, eposta: Annotated[str, Form()] = "", parola: 
         veri = GirisIstegi(eposta=eposta, parola=parola)
         kullanici_id = servis.giris(db, veri.eposta, veri.parola)
     except (ValidationError, GirisHatali):
-        # Doğrulama hatası da yanlış parola da aynı genel mesaj; parola asla geri basılmaz.
-        return _sayfa(request, "web/giris.html", {"eposta": eposta, "hata": _GIRIS_HATALI},
+        # Doğrulama hatası da yanlış parola da aynı genel mesaj; kullanıcının yazdığı parola asla geri basılmaz
+        # (parola alanı yalnızca demo parolasıyla dolabilir, K26).
+        return _sayfa(request, "web/giris.html", {**_demo_girisi(), "eposta": eposta, "hata": _GIRIS_HATALI},
                       durum=status.HTTP_401_UNAUTHORIZED)
     db.info["kullanici_id"] = kullanici_id               # sonraki işlemde app.kullanici_id ayarlanır
     cift, _ = servis.giris_oturumu(db, kullanici_id)

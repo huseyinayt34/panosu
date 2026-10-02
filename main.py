@@ -4,9 +4,10 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from bagimliliklar import get_db
-from rotalar import davetler, giderler, hizmetler, kimlik, musteriler, paketler, panel, rapor, web, ziyaretler
+from rotalar import ara_katman, davetler, giderler, hizmetler, kimlik, musteriler, paketler, panel, rapor, web, ziyaretler
 
 app = FastAPI(title="Panosu SaaS API")
+ara_katman.kaydet(app)                            # salt okunur demo (K25), üretim başlıkları (K27)
 app.include_router(kimlik.router)
 app.include_router(davetler.router)
 app.include_router(davetler.uye_router)

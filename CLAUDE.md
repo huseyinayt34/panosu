@@ -16,17 +16,24 @@ pytest. Windows + PowerShell. Sanal ortam: `.venv`.
 main.py → rotalar/ → (bagimliliklar.py, servisler/, semalar/) → models.py → database.py → config.py
 ```
 - `rotalar/`: HTTP katmanı. Servis istisnalarını HTTP kodlarına çevirir. `rotalar/web.py`: web paneli HTML uçları
-  (çerezli oturum, CSRF; `docs/adim-9-tasarim.md`).
+  (çerezli oturum, CSRF; `docs/adim-9-tasarim.md`). `rotalar/ara_katman.py`: salt okunur demo (K25) ve üretim
+  güvenlik başlıkları (K27, `docs/adim-11-tasarim.md`).
 - `servisler/`: iş kuralları. FastAPI import ETMEZ, HTTPException fırlatmaz.
 - `semalar/`: Pydantic istek/yanıt şemaları.
 - `models.py`: yalnızca sütunları yansıtır. Şemanın tek kaynağı SQL'dir.
 - `faz1_sema.sql`: okunabilir şema kaynağı. `alembic/sql/0001_faz1_sema.sql`: aynısı, BEGIN/COMMIT'siz.
 - `sentetik/`: BG/NBD tabanlı sentetik veri üreticisi. Yükleyici yalnızca adı `_demo` ile biten veritabanına yazar.
   `demo_tazele`: [DEMO] işletmelerin tarihlerini bugüne kaydırır (K11–K16, `docs/adim-9-tasarim.md`).
+  `demo_kur`: demo veritabanını tek komutta, sabit tohumlar ve referans günü 2026-10-01 ile baştan kurar (K24).
 - `analitik/`: modeller (V1, BG/NBD, MBG/NBD, Gamma-Gamma, yenileme simülasyonu), açıklama (neden riskli); veritabanı bilmez.
 - `backtest/`: sentetik senaryolarda model karşılaştırması (S0–S6); veritabanı yok.
 - `sablonlar/`: Jinja2 HTML şablonları (haftalık rapor). `sablonlar/web/`: web paneli şablonları.
 - `statik/`: web paneli statik dosyaları (htmx.min.js 2.0.4, panel.css); `/statik` altında sunulur.
+- `Dockerfile`, `.dockerignore`: yayın imajı (python:3.14-slim, root olmayan kullanıcı; imajı Render derler, K28).
+- `requirements-uretim.txt`: çalışma anı bağımlılıkları (`requirements.txt` sürümleriyle); yeni çalışma anı
+  import'unda güncellenir.
+- `.github/workflows/`: `demo-tazele.yml` (yayındaki demonun gece tazelemesi, K23) ve `demo-kur.yml` (elle, onay
+  kelimesi "KUR" ile baştan kurulum, K24).
 
 ## Değiştirilemez kurallar
 1. `create_all` / `drop_all` / `reflect` kullanılmaz. `alembic/` dışında DDL yazılmaz.
@@ -43,7 +50,8 @@ main.py → rotalar/ → (bagimliliklar.py, servisler/, semalar/) → models.py 
 6. Test silme, zayıflatma, `skip`/`xfail` yok. Güvenlik/izolasyon testi kırmızıysa düzeltmeye çalışma:
    dur ve raporla.
 7. Parolalar hiçbir çıktıda, raporda veya commit'te görünmez. `.env` asla commit'lenmez. `PANOSU_JWT_GIZLI` ve demo
-   parolası hiçbir çıktıda görünmez.
+   parolası hiçbir çıktıda görünmez. İstisna (K26): yayındaki demo parolası (PANOSU_DEMO_GIRIS_PAROLA) kamuya açıktır
+   ve yerel parolalardan farklıdır; yine de kodda, testte (sabit değer olarak), çıktıda ve commit'te yer almaz.
 8. Yeni paket eklemek onay gerektirir.
 9. Push (GitHub) yalnızca açık onayla yapılır.
 10. Talimatta olmayan yeniden düzenleme (refactor) veya yeni dosya/klasör önce sorulur.
@@ -54,6 +62,7 @@ main.py → rotalar/ → (bagimliliklar.py, servisler/, semalar/) → models.py 
 | `panosu` | Canlı; yalnızca gerçek işletme verisi | Yalnızca salt-okunur sorgu. Her yazma işlemi açık onay ister. `alembic upgrade` asla çalıştırılmaz (yalnızca onaylı `stamp`). |
 | `panosu_test` | pytest | Silinip `alembic upgrade head` ile yeniden kurulabilir |
 | `panosu_demo` | Sentetik veri, demo, backtest | Kuruldu; 5 [DEMO] işletme, sentetik veri; [DEMO] Denge Pilates'te üyelik paketleri, yenileme riskleri ve 2026-03'ten itibaren her ay 330.000 TL demo gideri (Panosu'ya geçiş ayı) (paket dönemi ziyaret tutarları 0); [DEMO] Butik Reformer: Faz 0 demosu (p ~ Beta(1, 290), ayda 5 yeni üye; ~75 aktif üye, 18 ay paket/ziyaret geçmişi, her ay gider). Yükleyici yalnızca _demo adlarına yazar. Demo sunucusunun her açılışında ve her gece 03:00'te bugüne kaydırılır (K11). |
+| Neon `panosu_demo` (yayın) | Canlı demo | Yalnızca Render (panosu_app) ve GitHub Actions bağlanır; yerelden bağlanılmaz; kurulum demo-kur.yml, tazeleme demo-tazele.yml |
 
 Sentetik veri ASLA `panosu`'ya yazılmaz.
 
@@ -85,6 +94,7 @@ uvicorn main:app --reload                        # geliştirme sunucusu, /docs
 .\.venv\Scripts\python.exe -m sentetik.demo_sunucu --tazeleme-yok  # tazelemesiz
 .\.venv\Scripts\python.exe -m sentetik.demo_tazele --veritabani panosu_demo --kuru   # demo tazeleme raporu, yazmaz
 .\.venv\Scripts\python.exe -m sentetik.demo_tazele --veritabani panosu_demo          # [DEMO] verisini bugüne kaydır + riskleri yeniden hesapla
+.\.venv\Scripts\python.exe -m sentetik.demo_kur --veritabani <ad>_demo   # tüm [DEMO] verisini silip baştan kur (PANOSU_DEMO_PAROLA ortamda; --uygulama-parolasi-ayarla yalnızca yayında)
 ```
 Test adresleri: `PANOSU_TEST_APP_URL` / `PANOSU_TEST_ADMIN_URL` ortamda tanımlıysa onlar kullanılır; değilse
 `tests/conftest.py`, `.env`'deki `PANOSU_VERITABANI_URL` / `PANOSU_MIGRASYON_URL`'den yalnızca veritabanı adını
@@ -115,7 +125,7 @@ gösterecek şekilde `alembic upgrade head`.
 | 8b | Otomatik hesaplama (9'dan önce; yalnızca plan): finans paneli her veri girişinde anında, yenileme riskleri her gece otomatik yeniden hesaplanır. (demo için gece tazeleme 9c'de yapıldı; gerçek işletmeler bekliyor) | Planlandı |
 | 9 | Web paneli (Jinja + HTMX, FastAPI içinde; `docs/adim-9-tasarim.md`), panosu_demo ile canlı demo | Tamam |
 | 10 | İzin, mesaj, geri kazanım ölçümü | Planlandı |
-| 11 | Yayına alma: Docker, CI, sunucu, güçlü ve farklı parolalar, ödeme | Planlandı |
+| 11 | Yayına alma: Docker, CI, sunucu, güçlü ve farklı parolalar, ödeme (`docs/adim-11-tasarim.md`) | Devam ediyor (minimum yayın: Docker, Render + Neon, Actions; ödeme sonraya) |
 
 Geliştirme fikirleri (karar değil; ilgili adımda tasarlanacak):
 - Adım 4b: yapay zekâ ile CSV sütun eşleme önerisi; yoklama defteri fotoğrafından tablo çıkarma.
@@ -136,7 +146,7 @@ Geliştirme fikirleri (karar değil; ilgili adımda tasarlanacak):
 - Raporlar raporlar/ klasörüne kaydedilir; bu klasör git'e girmez.
 
 ## Açık konular
-- Şu an açık konu yok.
+- test_demo_tazele.py::test_denetim_kayitlari_degismez aralıklı düşüyor (7 çalıştırmada 2): analitik/bgnbd.py:90 MBG/NBD yakınsamadı. Olası neden a,b sırtı (a/(a+b) belirgin, a+b zayıf belirlenmiş); rastgele test verisinde optimizasyon sırt boyunca kalıyor. Karar proje sahibinde; aday: (μ, κ) yeniden parametreleme + log κ zayıf önsel. Demo verisi sabit tohumlu ve yakınsıyor.
 
 ## Çalışma şekli
 - Her görevin sonunda rapor: değişen dosyalar, pytest özet satırı, talimattan her sapma.

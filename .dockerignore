@@ -1,0 +1,15 @@
+.git
+.venv
+.env
+.env.*
+veri/
+raporlar/
+tests/
+__pycache__/
+*.pyc
+.idea/
+.claude/
+.pytest_cache/
+.mcp.json
+**/__pycache__/
+**/*.pyc
