@@ -15,7 +15,7 @@ from dataclasses import dataclass
 import numpy as np
 from scipy.special import gammaln
 
-from analitik.bgnbd import log_mle
+from analitik.bgnbd import kanonik_sira, log_mle
 
 
 @dataclass(frozen=True)
@@ -57,10 +57,14 @@ def log_olabilirlik(prm: GammaGammaParametreleri, x, m) -> float:
 
 
 def fit(x, m, baslangic: GammaGammaParametreleri | None = None) -> GammaGammaParametreleri:
-    """(p, q, γ) MLE; yalnızca x ≥ 1 ve m̄ > 0 müşteriler kullanılır."""
+    """(p, q, γ) MLE; yalnızca x ≥ 1 ve m̄ > 0 müşteriler kullanılır.
+
+    Süzülen girdi kanonik sıraya (x, m) dizilir: aynı veri hangi sırayla gelirse gelsin parametre bit bit aynıdır.
+    """
     x, m = _tekrarlilar(x, m)
     if np.any(~(m > 0)):
         raise ValueError("Gamma-Gamma için tekrar ziyaretli müşterilerin ortalama tutarı pozitif olmalı")
+    x, m = kanonik_sira(x, m)
     if baslangic is None:
         baslangic = GammaGammaParametreleri(p=1.0, q=2.0, gamma=float(np.mean(m)))
     n = len(x)

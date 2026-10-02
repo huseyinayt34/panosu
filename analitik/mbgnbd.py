@@ -15,7 +15,7 @@ Parametre yapısı ve MLE BG/NBD ile ortaktır (BGNBDParametreleri, bgnbd.log_ml
 import numpy as np
 from scipy.special import betaln, gammaln
 
-from analitik.bgnbd import BGNBDParametreleri, _diziler, hayattaysa_beklenen_ziyaret, log_mle
+from analitik.bgnbd import BGNBDParametreleri, _diziler, hayattaysa_beklenen_ziyaret, kanonik_sira, log_mle
 
 
 def _log_oran_terimi(prm: BGNBDParametreleri, x, t_x, T) -> np.ndarray:
@@ -37,8 +37,11 @@ def log_olabilirlik(prm: BGNBDParametreleri, x, t_x, T) -> float:
 
 
 def fit(x, t_x, T, baslangic: BGNBDParametreleri | None = None) -> BGNBDParametreleri:
-    """(r, α, a, b) MLE; bgnbd.fit ile aynı yapı (log-parametre, L-BFGS-B, plato yedeği)."""
-    x, t_x, T = _diziler(x, t_x, T)
+    """(r, α, a, b) MLE; bgnbd.fit ile aynı yapı (log-parametre, L-BFGS-B, plato yedeği).
+
+    Girdi önce kanonik sıraya (x, t_x, T) dizilir: aynı veri hangi sırayla gelirse gelsin parametre bit bit aynıdır.
+    """
+    x, t_x, T = kanonik_sira(*_diziler(x, t_x, T))
     if baslangic is None:
         baslangic = BGNBDParametreleri(r=1.0, alfa=max(float(np.mean(T)), 1.0), a=1.0, b=1.0)
     n = len(x)

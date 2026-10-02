@@ -38,3 +38,11 @@ def test_parametre_geri_kazanimi_S0_40000_musteri():
     tahmin = gamma_gamma.fit(oz.x, oz.m)
     goreli = np.abs(tahmin.dizi() / GERCEK_GG.dizi() - 1)
     assert np.all(goreli < 0.15), dict(zip(("p", "q", "gamma"), goreli.round(3)))
+
+
+def test_fit_girdi_sirasindan_bagimsiz_bit_bit_ayni():
+    """Olabilirlik müşterilerin çoklu kümesinin fonksiyonu: permütasyon parametreyi TAM olarak değiştirmez."""
+    veri = uret("S0", np.random.default_rng(7), 2_000)
+    oz = ozellik_cikar(veri.zamanlar, veri.tutarlar, GOZLEM_GUN)
+    sira = np.random.default_rng(8).permutation(len(oz.x))
+    assert gamma_gamma.fit(oz.x, oz.m) == gamma_gamma.fit(oz.x[sira], oz.m[sira])

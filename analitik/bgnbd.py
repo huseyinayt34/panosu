@@ -38,6 +38,17 @@ def _diziler(x, t_x, T):
     return (np.asarray(x, dtype=float), np.asarray(t_x, dtype=float), np.asarray(T, dtype=float))
 
 
+def kanonik_sira(*diziler: np.ndarray) -> tuple[np.ndarray, ...]:
+    """Müşteri dizilerini öncelik sırasıyla (ilk dizi birincil anahtar) sözlük sırasına dizer.
+
+    Olabilirlik müşterilerin çoklu kümesinin fonksiyonudur; fit'ler girdiyi bu sıraya dizerek aynı veride, müşteri
+    kimlikleri ve okuma sırası ne olursa olsun bit bit aynı parametreyi verir. Eşit satırlar aynı olduğundan bağlar
+    sonucu etkilemez. Belirlenimcilik sağlar; tanımlanabilirliği (ör. a,b sırtı) çözmez.
+    """
+    sira = np.lexsort(diziler[::-1])
+    return tuple(d[sira] for d in diziler)
+
+
 def log_olabilirlik_bireysel(prm: BGNBDParametreleri, x, t_x, T) -> np.ndarray:
     """Her müşterinin log-olabilirlik katkısı."""
     x, t_x, T = _diziler(x, t_x, T)
@@ -59,8 +70,11 @@ def log_olabilirlik(prm: BGNBDParametreleri, x, t_x, T) -> float:
 
 
 def fit(x, t_x, T, baslangic: BGNBDParametreleri | None = None) -> BGNBDParametreleri:
-    """(r, α, a, b) MLE. Optimizasyon log-parametrelerde (pozitiflik), L-BFGS-B."""
-    x, t_x, T = _diziler(x, t_x, T)
+    """(r, α, a, b) MLE. Optimizasyon log-parametrelerde (pozitiflik), L-BFGS-B.
+
+    Girdi önce kanonik sıraya (x, t_x, T) dizilir: aynı veri hangi sırayla gelirse gelsin parametre bit bit aynıdır.
+    """
+    x, t_x, T = kanonik_sira(*_diziler(x, t_x, T))
     if baslangic is None:
         baslangic = BGNBDParametreleri(r=1.0, alfa=max(float(np.mean(T)), 1.0), a=1.0, b=1.0)
     n = len(x)

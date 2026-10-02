@@ -3,7 +3,7 @@
 Kiracı bağlamlı bir oturumla (RLS) işletmenin tamamlanmış ziyaretlerini ve aktif paketlerini okur, M3 (MBG/NBD)
 parametrelerini işletmenin tüm ziyaret geçmişiyle tahmin eder, her aktif paket için P(yenileme)'yi simüle eder ve
 `yenileme_riskleri`'ne yazar. Aynı gün + model için yeniden çalıştırma idempotenttir (ON CONFLICT ... DO UPDATE).
-Sıralı okuma: M3 uyumu üye sırasına duyarlı; sonuç fiziksel satır sırasından bağımsız olmalı.
+M3 uyumu üye sırasından bağımsızdır (mbgnbd.fit girdiyi kanonik sıraya dizer); okuma sırası sonucu etkilemez.
 """
 
 import uuid
