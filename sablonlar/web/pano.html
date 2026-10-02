@@ -14,5 +14,8 @@
     <noscript><button type="submit">Göster</button></noscript>
   </form>
   <div id="finans">{% include "web/_finans.html" %}</div>
+  {% include "web/_riskli.html" %}
+  {% include "web/_sessiz.html" %}
+  <p class="not">Olasılıklar model tahminidir; gerçek yenileme verisiyle kalibre edilmemiştir.</p>
 </section>
 {% endblock %}

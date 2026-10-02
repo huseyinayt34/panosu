@@ -43,6 +43,18 @@ def yuzde(oran: Decimal | float | None) -> str:
     return f"%{Decimal(str(oran)) * 100:.0f}"
 
 
+def olasilik(p: Decimal | float | None) -> str:
+    """Olasılık gösterimi: 0 → '%0'; 0 < p < 0,01 → '<%1'; 0,99 < p < 1 → '>%99'; diğerleri yuzde(p). None → '—'."""
+    if p is None:
+        return "—"
+    d = Decimal(str(p))
+    if 0 < d < Decimal("0.01"):
+        return "<%1"
+    if Decimal("0.99") < d < 1:
+        return ">%99"
+    return yuzde(d)
+
+
 def ondalik(deger: Decimal | int | str | None, hane: int = 1) -> str:
     """Decimal → '13,5' (ondalık virgül, yarım yukarı, binlik ayıracı yok). None → '—'."""
     if deger is None:

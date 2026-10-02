@@ -1,0 +1,29 @@
+{% set s = sessiz %}
+<section id="sessiz" class="tablo-bolumu">
+  <h2>Sessiz üyeler</h2>
+  <p class="alt">Paketi devam ettiği hâlde aktif olma olasılığı %50'nin altında · {{ s.sayi }} üye · toplam riskteki para {{ para(s.toplam_riskteki_para) }}</p>
+  {% if s.eskimis %}<p class="not">Olasılıklar ve açıklamalar {{ tarih(s.en_eski_hesaplama) }} verisiyle hesaplandı.</p>{% endif %}
+  {% if not s.ogeler %}
+  <p class="bos">Sessiz üye yok.</p>
+  {% else %}
+  <div class="tablo-kap">
+    <table>
+      <thead><tr><th>Üye</th><th>Telefon</th><th>Paket</th><th>Son ziyaret</th><th class="sayi">Gelmediği gün</th>
+        <th class="sayi">Aktif olma olasılığı</th><th class="sayi">Riskteki para</th><th>Neden</th></tr></thead>
+      <tbody>
+        {% for o in s.ogeler %}{% set a = o.aciklama %}
+        <tr><td>{{ o.ad_soyad }}</td><td class="tel">{{ o.telefon_e164 or '—' }}</td><td>{{ o.paket_adi }}</td>
+          <td class="tel">{{ tarih(o.son_ziyaret_gunu) }}</td>
+          <td class="sayi">{{ o.son_ziyaretten_gecen_gun if o.son_ziyaretten_gecen_gun is not none else '—' }}</td>
+          <td class="sayi">{{ olasilik(o.p_hayatta_simdi) }}</td><td class="sayi">{{ para(o.riskteki_para) }}</td>
+          <td class="neden">{% if a is none %}—{% else %}{{ a.cumle }}
+            {% if a.ana_neden not in ('dusuk_risk', 'hic_gelmedi') %}<div class="kucuk">{% if a.p_aktif < AYRISTIRMA_MIN_P_AKTIF %}Aktif olma {{ olasilik(a.p_aktif) }}{% else %}Aktif olma {{ olasilik(a.p_aktif) }} · bitişe kadar sürdürme {{ olasilik(a.p_surdurme) }} → yenileme {{ olasilik(o.p_yenileme) }}{% endif %}</div>{% endif %}{% endif %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if s.ogeler | length < s.satir_sayisi %}
+  <p><a href="/pano?sessiz=tumu#sessiz" hx-get="/pano/sessiz?tumu=1" hx-target="#sessiz" hx-swap="outerHTML">Tümünü göster ({{ s.sayi }})</a></p>
+  {% endif %}
+  {% endif %}
+</section>

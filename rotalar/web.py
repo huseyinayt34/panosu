@@ -13,6 +13,7 @@ döndürülen yanıta yazılır.
 import re
 import secrets
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -25,6 +26,7 @@ from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from analitik.aciklama import AYRISTIRMA_MIN_P_AKTIF
 from bagimliliklar import Kimlik, get_db, kiraci_oturumu, token_kimligi
 from config import ayarlar
 from database import SessionLocal
@@ -32,7 +34,7 @@ from models import Isletme
 from rotalar.kimlik import _GIRIS_HATALI
 from semalar.gider import AY_DESENI, ay_coz
 from semalar.kimlik import GirisIstegi
-from servisler import bicim, finans_servisi
+from servisler import bicim, finans_servisi, risk_listeleri
 from servisler import kimlik as servis
 from servisler.kimlik import GirisHatali, TokenCifti, TokenGecersiz, UyeDegil
 from servisler.yenileme_servisi import isletme_bugun
@@ -52,7 +54,8 @@ STATIK_DIZINI = KOK_DIZIN / "statik"
 
 sablonlar = Jinja2Templates(directory=KOK_DIZIN / "sablonlar")   # otomatik kaçış açık (Starlette varsayılanı)
 sablonlar.env.globals.update(para=bicim.para, tarih=bicim.tarih, ay_adi=bicim.ay_adi, yuzde=bicim.yuzde,
-                             ondalik=bicim.ondalik)
+                             ondalik=bicim.ondalik, olasilik=bicim.olasilik,
+                             AYRISTIRMA_MIN_P_AKTIF=AYRISTIRMA_MIN_P_AKTIF)
 
 
 @dataclass
@@ -283,38 +286,65 @@ def _son_aylar(bu_ay: date) -> list[date]:
     return aylar
 
 
-def _pano_yaniti(request: Request, oturum: WebOturumu, ay: str | None, sablon: str, ust_bilgi: bool) -> Response:
-    """/pano ve /pano/finans ortak gövdesi: kiracı oturumu, rol, seçili ay, finans özeti (yalnızca sahip/yönetici)."""
+def _kiraci_sayfasi(request: Request, oturum: WebOturumu, sablon: str,
+                    baglam_kur: Callable[[Session], dict]) -> tuple[Response, dict | None]:
+    """Kiracı oturumu gerektiren pano yanıtlarının ortak gövdesi. İşletme seçilmemişse HTMX → 401 + HX-Refresh, tam
+    sayfa → /isletme. Bağlam kiracı oturumunda kurulur; yanıtla birlikte döner (erken çıkışta None)."""
     if oturum.kimlik.isletme_id is None:
         if _htmx_mi(request):
-            return _onbelleksiz(Response(status_code=status.HTTP_401_UNAUTHORIZED, headers={"HX-Refresh": "true"}))
+            return _onbelleksiz(Response(status_code=status.HTTP_401_UNAUTHORIZED, headers={"HX-Refresh": "true"})), None
         yanit = _yonlendir("/isletme")
         if oturum.yeni_cift is not None:
             _cerezleri_yaz(yanit, oturum.yeni_cift)
-        return yanit
+        return yanit, None
     try:
         with kiraci_oturumu(oturum.kimlik) as db:
-            bugun = isletme_bugun(db)
-            hedef = _hedef_ay(ay, bugun)
-            finans_gorur = db.info["rol"] in FINANS_ROLLERI
-            baglam = {"ay": hedef, "bugun": bugun, "finans_gorur": finans_gorur,
-                      "finans": finans_servisi.finans_ozeti(db, hedef) if finans_gorur else None}
-            if ust_bilgi:
-                baglam.update(_ust_bilgi(db, oturum.kimlik), aylar=_son_aylar(bugun.replace(day=1)))
+            baglam = baglam_kur(db)
     except HTTPException as h:
-        return _sayfa(request, "web/taban.html", {"mesaj": h.detail}, oturum=oturum, durum=h.status_code)
-    yanit = _sayfa(request, sablon, baglam, oturum=oturum)
-    if not ust_bilgi and _htmx_mi(request):
-        yanit.headers["HX-Push-Url"] = f"/pano?ay={hedef:%Y-%m}"   # adres çubuğunda parça değil sayfa adresi
-    return yanit
+        return _sayfa(request, "web/taban.html", {"mesaj": h.detail}, oturum=oturum, durum=h.status_code), None
+    return _sayfa(request, sablon, baglam, oturum=oturum), baglam
+
+
+def _finans_baglami(db: Session, ay: str | None) -> dict:
+    """Rol, seçili ay, finans özeti (yalnızca sahip/yönetici)."""
+    bugun = isletme_bugun(db)
+    hedef = _hedef_ay(ay, bugun)
+    finans_gorur = db.info["rol"] in FINANS_ROLLERI
+    return {"ay": hedef, "bugun": bugun, "finans_gorur": finans_gorur,
+            "finans": finans_servisi.finans_ozeti(db, hedef) if finans_gorur else None}
 
 
 @router.get("/pano")
-def pano(request: Request, ay: str | None = None, oturum: WebOturumu = Depends(web_kimligi)):
-    return _pano_yaniti(request, oturum, ay, "web/pano.html", ust_bilgi=True)
+def pano(request: Request, ay: str | None = None, riskli: str | None = None, sessiz: str | None = None,
+         oturum: WebOturumu = Depends(web_kimligi)):
+    """Finans kutuları + riskli ve sessiz üye tabloları (tablolar tüm rollere açık, seçili aydan bağımsız)."""
+    def kur(db: Session) -> dict:
+        baglam = _finans_baglami(db, ay)
+        baglam.update(_ust_bilgi(db, oturum.kimlik), aylar=_son_aylar(baglam["bugun"].replace(day=1)),
+                      riskli=risk_listeleri.riskli_uyeler(db, tumu=riskli == "tumu"),
+                      sessiz=risk_listeleri.sessiz_uye_listesi(db, tumu=sessiz == "tumu"))
+        return baglam
+    return _kiraci_sayfasi(request, oturum, "web/pano.html", kur)[0]
 
 
 @router.get("/pano/finans")
 def pano_finans(request: Request, ay: str | None = None, oturum: WebOturumu = Depends(web_kimligi)):
-    """Yalnızca finans parçası (HTMX ay seçici)."""
-    return _pano_yaniti(request, oturum, ay, "web/_finans.html", ust_bilgi=False)
+    """Yalnızca finans parçası (HTMX ay seçici); risk tabloları hesaplanmaz."""
+    yanit, baglam = _kiraci_sayfasi(request, oturum, "web/_finans.html", lambda db: _finans_baglami(db, ay))
+    if baglam is not None and _htmx_mi(request):
+        yanit.headers["HX-Push-Url"] = f"/pano?ay={baglam['ay']:%Y-%m}"   # adres çubuğunda parça değil sayfa adresi
+    return yanit
+
+
+@router.get("/pano/riskli")
+def pano_riskli(request: Request, tumu: str | None = None, oturum: WebOturumu = Depends(web_kimligi)):
+    """Yalnızca riskli üye tablosu parçası ("Tümünü göster")."""
+    return _kiraci_sayfasi(request, oturum, "web/_riskli.html",
+                           lambda db: {"riskli": risk_listeleri.riskli_uyeler(db, tumu=tumu == "1")})[0]
+
+
+@router.get("/pano/sessiz")
+def pano_sessiz(request: Request, tumu: str | None = None, oturum: WebOturumu = Depends(web_kimligi)):
+    """Yalnızca sessiz üye tablosu parçası ("Tümünü göster")."""
+    return _kiraci_sayfasi(request, oturum, "web/_sessiz.html",
+                           lambda db: {"sessiz": risk_listeleri.sessiz_uye_listesi(db, tumu=tumu == "1")})[0]

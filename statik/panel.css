@@ -37,6 +37,18 @@ button:hover { background: #e1e6eb; }
 .zarar { color: #b42318; }
 .kar { color: #146c43; }
 
+.tablo-bolumu { margin-top: 24px; }
+.tablo-bolumu h2 { font-size: 17px; margin: 0 0 2px; }
+.tablo-bolumu .alt, .tablo-bolumu .not, .pano > .not { font-size: 13px; color: #556; margin: 0 0 8px; }
+.tablo-kap { overflow-x: auto; }                  /* dar ekranda tablo yatay kayar */
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { border-bottom: 1px solid #e1e6eb; padding: 5px 6px; text-align: left; vertical-align: top; }
+th { background: #f2f4f7; font-weight: 600; }
+td.sayi, th.sayi { text-align: right; white-space: nowrap; }
+td.tel { white-space: nowrap; }
+td.neden { min-width: 260px; }
+.kucuk { font-size: 12px; color: #6b7480; margin-top: 2px; }
+
 @media (max-width: 600px) {
   .kutular { grid-template-columns: 1fr; }        /* dar ekranda kutular alt alta */
   .ust nav { margin-left: 0; width: 100%; justify-content: space-between; }

@@ -22,7 +22,7 @@ main.py → rotalar/ → (bagimliliklar.py, servisler/, semalar/) → models.py 
 - `models.py`: yalnızca sütunları yansıtır. Şemanın tek kaynağı SQL'dir.
 - `faz1_sema.sql`: okunabilir şema kaynağı. `alembic/sql/0001_faz1_sema.sql`: aynısı, BEGIN/COMMIT'siz.
 - `sentetik/`: BG/NBD tabanlı sentetik veri üreticisi. Yükleyici yalnızca adı `_demo` ile biten veritabanına yazar.
-- `analitik/`: modeller (V1, BG/NBD, MBG/NBD, Gamma-Gamma, yenileme simülasyonu); veritabanı bilmez.
+- `analitik/`: modeller (V1, BG/NBD, MBG/NBD, Gamma-Gamma, yenileme simülasyonu), açıklama (neden riskli); veritabanı bilmez.
 - `backtest/`: sentetik senaryolarda model karşılaştırması (S0–S6); veritabanı yok.
 - `sablonlar/`: Jinja2 HTML şablonları (haftalık rapor). `sablonlar/web/`: web paneli şablonları.
 - `statik/`: web paneli statik dosyaları (htmx.min.js 2.0.4, panel.css); `/statik` altında sunulur.
@@ -108,13 +108,11 @@ gösterecek şekilde `alembic upgrade head`.
 | 8 | Gerçek kimlik doğrulama + işletme kaydı: Argon2id + JWT, tek kullanımlık yenileme tokenı, davet kodları (`docs/adim-8-tasarim.md`). Canlı `panosu` migration'ı ayrı onay bekliyor. | Tamam |
 | 8a | Soğuk başlangıç modu (9'dan önce; yalnızca plan): geçmiş verisi az olan işletmede MBG/NBD parametreleri, diğer işletmelerden veya sentetik veriden öğrenilen önsel (prior) ile başlar ve işletmenin verisi geldikçe Bayesçi olarak güncellenir. Bu dönemde panelde tahminler 'ön tahmin' etiketiyle gösterilir. | Planlandı |
 | 8b | Otomatik hesaplama (9'dan önce; yalnızca plan): finans paneli her veri girişinde anında, yenileme riskleri her gece otomatik yeniden hesaplanır. | Planlandı |
-| 9 | Web paneli (Jinja + HTMX, FastAPI içinde; `docs/adim-9-tasarim.md`), panosu_demo ile canlı demo | Devam ediyor (9a tamam) |
+| 9 | Web paneli (Jinja + HTMX, FastAPI içinde; `docs/adim-9-tasarim.md`), panosu_demo ile canlı demo | Devam ediyor (9a, 9b tamam) |
 | 10 | İzin, mesaj, geri kazanım ölçümü | Planlandı |
 | 11 | Yayına alma: Docker, CI, sunucu, güçlü ve farklı parolalar, ödeme | Planlandı |
 
 Geliştirme fikirleri (karar değil; ilgili adımda tasarlanacak):
-- Adım 9: her riskli üye için "neden riskli" açıklaması (örn. son ziyaretten bu yana geçen gün, normal ziyaret
-  aralığına göre sapma, paket bitişine kalan gün).
 - Adım 4b: yapay zekâ ile CSV sütun eşleme önerisi; yoklama defteri fotoğrafından tablo çıkarma.
 - Adım 10: kontrol gruplu mesajlaşma ve uplift ölçümü; "uyuyan köpekleri" (ödeyip az gelen üyeleri) rahatsız
   etmeme; geri kazanımın nedensel kanıtı.

@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from conftest import basliklar
 from servisler import rapor_servisi, rapor_uret
-from servisler.bicim import AYLAR, ay_adi, ondalik, para, tarih, yuzde
+from servisler.bicim import AYLAR, ay_adi, olasilik, ondalik, para, tarih, yuzde
 from servisler.yenileme_calistir import IzinsizVeritabani
 
 
@@ -45,6 +45,15 @@ def test_ay_adi_bicimi():
 
 def test_yuzde_bicimi():
     assert (yuzde(Decimal("0.1234")), yuzde(Decimal("1")), yuzde(None)) == ("%12", "%100", "—")
+
+
+@pytest.mark.parametrize("p,beklenen", [
+    (None, "—"), (Decimal("0"), "%0"), (Decimal("0.0001"), "<%1"), (Decimal("0.0099"), "<%1"), (Decimal("0.01"), "%1"),
+    (Decimal("0.28"), "%28"), (Decimal("0.99"), "%99"), (Decimal("0.9950"), ">%99"), (Decimal("0.9999"), ">%99"),
+    (Decimal("1"), "%100"), (0.005, "<%1"),
+])
+def test_olasilik_bicimi(p, beklenen):
+    assert olasilik(p) == beklenen
 
 
 @pytest.fixture()
