@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
-from fastapi.responses import RedirectResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 from sqlalchemy import func, select
@@ -34,7 +34,7 @@ from models import Isletme
 from rotalar.kimlik import _GIRIS_HATALI
 from semalar.gider import AY_DESENI, ay_coz
 from semalar.kimlik import GirisIstegi
-from servisler import bicim, finans_servisi, risk_listeleri
+from servisler import bicim, finans_servisi, rapor_servisi, risk_listeleri
 from servisler import kimlik as servis
 from servisler.kimlik import GirisHatali, TokenCifti, TokenGecersiz, UyeDegil
 from servisler.yenileme_servisi import isletme_bugun
@@ -54,7 +54,7 @@ STATIK_DIZINI = KOK_DIZIN / "statik"
 
 sablonlar = Jinja2Templates(directory=KOK_DIZIN / "sablonlar")   # otomatik kaçış açık (Starlette varsayılanı)
 sablonlar.env.globals.update(para=bicim.para, tarih=bicim.tarih, ay_adi=bicim.ay_adi, yuzde=bicim.yuzde,
-                             ondalik=bicim.ondalik, olasilik=bicim.olasilik,
+                             ondalik=bicim.ondalik, olasilik=bicim.olasilik, telefon=bicim.telefon,
                              AYRISTIRMA_MIN_P_AKTIF=AYRISTIRMA_MIN_P_AKTIF)
 
 
@@ -286,10 +286,11 @@ def _son_aylar(bu_ay: date) -> list[date]:
     return aylar
 
 
-def _kiraci_sayfasi(request: Request, oturum: WebOturumu, sablon: str,
+def _kiraci_sayfasi(request: Request, oturum: WebOturumu, sablon: str | None,
                     baglam_kur: Callable[[Session], dict]) -> tuple[Response, dict | None]:
     """Kiracı oturumu gerektiren pano yanıtlarının ortak gövdesi. İşletme seçilmemişse HTMX → 401 + HX-Refresh, tam
-    sayfa → /isletme. Bağlam kiracı oturumunda kurulur; yanıtla birlikte döner (erken çıkışta None)."""
+    sayfa → /isletme. Bağlam kiracı oturumunda kurulur; yanıtla birlikte döner (erken çıkışta None).
+    sablon None ise bağlamın "html" alanı (hazır sayfa, ör. haftalık rapor) aynı çerez ve önbellek kurallarıyla döner."""
     if oturum.kimlik.isletme_id is None:
         if _htmx_mi(request):
             return _onbelleksiz(Response(status_code=status.HTTP_401_UNAUTHORIZED, headers={"HX-Refresh": "true"})), None
@@ -302,6 +303,11 @@ def _kiraci_sayfasi(request: Request, oturum: WebOturumu, sablon: str,
             baglam = baglam_kur(db)
     except HTTPException as h:
         return _sayfa(request, "web/taban.html", {"mesaj": h.detail}, oturum=oturum, durum=h.status_code), None
+    if sablon is None:
+        yanit = HTMLResponse(baglam["html"])
+        if oturum.yeni_cift is not None:
+            _cerezleri_yaz(yanit, oturum.yeni_cift)
+        return _onbelleksiz(yanit), baglam
     return _sayfa(request, sablon, baglam, oturum=oturum), baglam
 
 
@@ -348,3 +354,14 @@ def pano_sessiz(request: Request, tumu: str | None = None, oturum: WebOturumu = 
     """Yalnızca sessiz üye tablosu parçası ("Tümünü göster")."""
     return _kiraci_sayfasi(request, oturum, "web/_sessiz.html",
                            lambda db: {"sessiz": risk_listeleri.sessiz_uye_listesi(db, tumu=tumu == "1")})[0]
+
+
+@router.get("/pano/rapor")
+def pano_rapor(request: Request, oturum: WebOturumu = Depends(web_kimligi)):
+    """Haftalık rapor (K18): panelin yazdırılabilir hâli, yalnızca sahip ve yönetici. Panelde yeni sekmede açılır."""
+    def kur(db: Session) -> dict:
+        if db.info["rol"] not in FINANS_ROLLERI:
+            raise HTTPException(status.HTTP_403_FORBIDDEN,
+                                "Haftalık rapor yalnızca işletme sahibi ve yöneticiye açıktır.")
+        return {"html": rapor_servisi.haftalik_rapor(db)}
+    return _kiraci_sayfasi(request, oturum, None, kur)[0]

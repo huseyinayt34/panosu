@@ -12,6 +12,7 @@
       {% endfor %}
     </select>
     <noscript><button type="submit">Göster</button></noscript>
+    {% if finans_gorur %}<a href="/pano/rapor" target="_blank" rel="noopener">Haftalık rapor</a>{% endif %}
   </form>
   <div id="finans">{% include "web/_finans.html" %}</div>
   {% include "web/_riskli.html" %}

@@ -22,6 +22,7 @@ main.py → rotalar/ → (bagimliliklar.py, servisler/, semalar/) → models.py 
 - `models.py`: yalnızca sütunları yansıtır. Şemanın tek kaynağı SQL'dir.
 - `faz1_sema.sql`: okunabilir şema kaynağı. `alembic/sql/0001_faz1_sema.sql`: aynısı, BEGIN/COMMIT'siz.
 - `sentetik/`: BG/NBD tabanlı sentetik veri üreticisi. Yükleyici yalnızca adı `_demo` ile biten veritabanına yazar.
+  `demo_tazele`: [DEMO] işletmelerin tarihlerini bugüne kaydırır (K11–K16, `docs/adim-9-tasarim.md`).
 - `analitik/`: modeller (V1, BG/NBD, MBG/NBD, Gamma-Gamma, yenileme simülasyonu), açıklama (neden riskli); veritabanı bilmez.
 - `backtest/`: sentetik senaryolarda model karşılaştırması (S0–S6); veritabanı yok.
 - `sablonlar/`: Jinja2 HTML şablonları (haftalık rapor). `sablonlar/web/`: web paneli şablonları.
@@ -52,7 +53,7 @@ main.py → rotalar/ → (bagimliliklar.py, servisler/, semalar/) → models.py 
 |---|---|---|
 | `panosu` | Canlı; yalnızca gerçek işletme verisi | Yalnızca salt-okunur sorgu. Her yazma işlemi açık onay ister. `alembic upgrade` asla çalıştırılmaz (yalnızca onaylı `stamp`). |
 | `panosu_test` | pytest | Silinip `alembic upgrade head` ile yeniden kurulabilir |
-| `panosu_demo` | Sentetik veri, demo, backtest | Kuruldu; 5 [DEMO] işletme, sentetik veri; [DEMO] Denge Pilates'te üyelik paketleri, yenileme riskleri ve 2026-03'ten itibaren her ay 330.000 TL demo gideri (Panosu'ya geçiş ayı) (paket dönemi ziyaret tutarları 0); [DEMO] Butik Reformer: Faz 0 demosu (p ~ Beta(1, 290), ayda 5 yeni üye; ~75 aktif üye, 18 ay paket/ziyaret geçmişi, her ay gider). Yükleyici yalnızca _demo adlarına yazar. |
+| `panosu_demo` | Sentetik veri, demo, backtest | Kuruldu; 5 [DEMO] işletme, sentetik veri; [DEMO] Denge Pilates'te üyelik paketleri, yenileme riskleri ve 2026-03'ten itibaren her ay 330.000 TL demo gideri (Panosu'ya geçiş ayı) (paket dönemi ziyaret tutarları 0); [DEMO] Butik Reformer: Faz 0 demosu (p ~ Beta(1, 290), ayda 5 yeni üye; ~75 aktif üye, 18 ay paket/ziyaret geçmişi, her ay gider). Yükleyici yalnızca _demo adlarına yazar. Demo sunucusunun her açılışında ve her gece 03:00'te bugüne kaydırılır (K11). |
 
 Sentetik veri ASLA `panosu`'ya yazılmaz.
 
@@ -73,13 +74,17 @@ uvicorn main:app --reload                        # geliştirme sunucusu, /docs
 .\.venv\Scripts\python.exe -m sentetik.paket_uretici --veritabani panosu_demo --giderler 2026-10   # demo giderleri
 .\.venv\Scripts\python.exe -m sentetik.paket_uretici --veritabani panosu_demo --gecmis-giderler   # 2026-03'ten (ya da ilk ziyaret ayından) bugüne eksik aylar
 .\.venv\Scripts\python.exe -m sentetik.paket_uretici --veritabani panosu_demo --gecmis-giderler --guncelle   # ayrıca demo giderlerini güncelle, 2026-03 öncesini sil
+# UYARI: paket_uretici --gecmis-giderler takvim başlangıcını (2026-03) kullanır; tazeleme sonrası çalıştırma, gider penceresini bozar.
 .\.venv\Scripts\python.exe -m sentetik.butik_reformer --veritabani panosu_demo    # ikinci Faz 0 demosu (bir kez)
 .\.venv\Scripts\python.exe -m sentetik.butik_reformer --veritabani panosu_demo --yeniden   # yalnızca Butik Reformer'ı silip yeniden yükle
 .\.venv\Scripts\python.exe -m sentetik.demo_kullanici --veritabani panosu_demo    # demo@panosu.local (parola getpass)
 .\.venv\Scripts\python.exe -m servisler.isletme_ac --veritabani <ad> --eposta <e> --ad-soyad <a> --isletme <ad>  # pilot işletme (_demo/_test; canlı: --canli-onay, ayrı onayla)
 .\.venv\Scripts\python.exe -m servisler.rapor_uret --veritabani panosu_demo --isletme <uuid> --cikti raporlar/haftalik.html
 .\.venv\Scripts\python.exe -m servisler.yenileme_calistir --veritabani panosu_demo --isletme <uuid>  # yenileme riski (_demo/_test)
-.\.venv\Scripts\python.exe -m sentetik.demo_sunucu                 # web paneli panosu_demo ile, 127.0.0.1:8000 (--port)
+.\.venv\Scripts\python.exe -m sentetik.demo_sunucu                 # web paneli panosu_demo ile, 127.0.0.1:8000 (--port); açılışta ve her gece 03:00'te demo tazeleme
+.\.venv\Scripts\python.exe -m sentetik.demo_sunucu --tazeleme-yok  # tazelemesiz
+.\.venv\Scripts\python.exe -m sentetik.demo_tazele --veritabani panosu_demo --kuru   # demo tazeleme raporu, yazmaz
+.\.venv\Scripts\python.exe -m sentetik.demo_tazele --veritabani panosu_demo          # [DEMO] verisini bugüne kaydır + riskleri yeniden hesapla
 ```
 Test adresleri: `PANOSU_TEST_APP_URL` / `PANOSU_TEST_ADMIN_URL` ortamda tanımlıysa onlar kullanılır; değilse
 `tests/conftest.py`, `.env`'deki `PANOSU_VERITABANI_URL` / `PANOSU_MIGRASYON_URL`'den yalnızca veritabanı adını
@@ -107,8 +112,8 @@ gösterecek şekilde `alembic upgrade head`.
 | 4b | CSV içe aktarma (gerçek Faz 0 verisi gelince; 8'e bağlı değil). Not: içe aktarmada giriş (check-in) ziyaretlerinin tutarı 0 olmalı; aksi hâlde paket geliri iki kez sayılır. | Bekliyor |
 | 8 | Gerçek kimlik doğrulama + işletme kaydı: Argon2id + JWT, tek kullanımlık yenileme tokenı, davet kodları (`docs/adim-8-tasarim.md`). Canlı `panosu` migration'ı ayrı onay bekliyor. | Tamam |
 | 8a | Soğuk başlangıç modu (9'dan önce; yalnızca plan): geçmiş verisi az olan işletmede MBG/NBD parametreleri, diğer işletmelerden veya sentetik veriden öğrenilen önsel (prior) ile başlar ve işletmenin verisi geldikçe Bayesçi olarak güncellenir. Bu dönemde panelde tahminler 'ön tahmin' etiketiyle gösterilir. | Planlandı |
-| 8b | Otomatik hesaplama (9'dan önce; yalnızca plan): finans paneli her veri girişinde anında, yenileme riskleri her gece otomatik yeniden hesaplanır. | Planlandı |
-| 9 | Web paneli (Jinja + HTMX, FastAPI içinde; `docs/adim-9-tasarim.md`), panosu_demo ile canlı demo | Devam ediyor (9a, 9b tamam) |
+| 8b | Otomatik hesaplama (9'dan önce; yalnızca plan): finans paneli her veri girişinde anında, yenileme riskleri her gece otomatik yeniden hesaplanır. (demo için gece tazeleme 9c'de yapıldı; gerçek işletmeler bekliyor) | Planlandı |
+| 9 | Web paneli (Jinja + HTMX, FastAPI içinde; `docs/adim-9-tasarim.md`), panosu_demo ile canlı demo | Tamam |
 | 10 | İzin, mesaj, geri kazanım ölçümü | Planlandı |
 | 11 | Yayına alma: Docker, CI, sunucu, güçlü ve farklı parolalar, ödeme | Planlandı |
 
@@ -131,9 +136,7 @@ Geliştirme fikirleri (karar değil; ilgili adımda tasarlanacak):
 - Raporlar raporlar/ klasörüne kaydedilir; bu klasör git'e girmez.
 
 ## Açık konular
-- Demo verisi 2026-10-01'e göre üretildi; panel gerçek bugünü kullandığı için ilk günden bozulmaya başlıyor (2 Ekim'de
-  Butik Reformer: Eylül sonu 81 aktif üye → 75, Ekim kasaya giren 0 TL, çünkü yenilemeler üretilmedi). Çözüm: demo
-  verisini her gece bugüne kaydıran/yeniden üreten iş; 9c'de veya yayına almada (Adım 11) ele alınacak.
+- Şu an açık konu yok.
 
 ## Çalışma şekli
 - Her görevin sonunda rapor: değişen dosyalar, pytest özet satırı, talimattan her sapma.

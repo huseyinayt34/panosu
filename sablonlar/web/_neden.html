@@ -1,0 +1,4 @@
+{# "Neden riskli" hücresinin içeriği (9b K6–K9): cümle + gri ayrıştırma satırı. Panel tabloları ve haftalık rapor
+   ortak kullanır (K17). o: liste öğesi (p_yenileme), a: Aciklama | None. Çıktı 9b'deki hücreyle birebir aynıdır. #}
+{% macro neden(o, a) %}{% if a is none %}—{% else %}{{ a.cumle }}
+            {% if a.ana_neden not in ('dusuk_risk', 'hic_gelmedi') %}<div class="kucuk">{% if a.p_aktif < AYRISTIRMA_MIN_P_AKTIF %}Aktif olma {{ olasilik(a.p_aktif) }}{% else %}Aktif olma {{ olasilik(a.p_aktif) }} · bitişe kadar sürdürme {{ olasilik(a.p_surdurme) }} → yenileme {{ olasilik(o.p_yenileme) }}{% endif %}</div>{% endif %}{% endif %}{% endmacro %}

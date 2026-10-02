@@ -3,6 +3,7 @@
 Kiracı bağlamlı bir oturumla (RLS) işletmenin tamamlanmış ziyaretlerini ve aktif paketlerini okur, M3 (MBG/NBD)
 parametrelerini işletmenin tüm ziyaret geçmişiyle tahmin eder, her aktif paket için P(yenileme)'yi simüle eder ve
 `yenileme_riskleri`'ne yazar. Aynı gün + model için yeniden çalıştırma idempotenttir (ON CONFLICT ... DO UPDATE).
+Sıralı okuma: M3 uyumu üye sırasına duyarlı; sonuç fiziksel satır sırasından bağımsız olmalı.
 """
 
 import uuid
@@ -55,6 +56,7 @@ def yenileme_hesapla(db: Session, hesaplama_tarihi: date | None = None) -> int:
     for musteri_id, zaman in db.execute(
         select(Ziyaret.musteri_id, Ziyaret.ziyaret_zamani)
         .where(Ziyaret.durum == "tamamlandi", Ziyaret.ziyaret_zamani < son)
+        .order_by(Ziyaret.musteri_id, Ziyaret.ziyaret_zamani)
     ):
         ziyaretler[musteri_id].append((zaman - son).total_seconds() / _GUN_SANIYE)   # gün; gözlem sonu = 0
     if not ziyaretler:

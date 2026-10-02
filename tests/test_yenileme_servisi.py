@@ -92,6 +92,31 @@ def test_panel_yenilemeler(admin_engine, kucuk_isletme, iki_kiraci):
     assert istemci.get("/panel/yenilemeler", headers=basliklar(b)).json()["paket_sayisi"] == 0   # başka kiracı
 
 
+def _p_hayatta(admin_engine, isletme_id) -> dict:
+    with admin_engine.connect() as con:
+        return dict(con.execute(text("SELECT paket_id, p_hayatta_simdi FROM yenileme_riskleri WHERE isletme_id = :i"),
+                                {"i": str(isletme_id)}).all())
+
+
+def test_sonuc_fiziksel_satir_sirasindan_bagimsiz(admin_engine, kucuk_isletme):
+    """M3 uyumu üye sırasına duyarlı; yenileme_hesapla sıralı okuduğu için UPDATE'in değiştirdiği fiziksel satır
+    sırası sonucu değiştirmemeli (demo tazelemesinde görülen 0,0001'lik farkların nedeni)."""
+    a = kucuk_isletme
+    calistir("panosu_test", a.isletme_id, BUGUN)
+    ilk = _p_hayatta(admin_engine, a.isletme_id)
+
+    with admin_engine.begin() as con:                    # yarısını, sonra öbür yarısını tablonun sonuna taşı
+        for kalan in (0, 1):
+            con.execute(text(
+                "UPDATE ziyaretler SET notlar = notlar WHERE isletme_id = :i AND ziyaret_id IN ("
+                "  SELECT ziyaret_id FROM (SELECT ziyaret_id, row_number() OVER (ORDER BY ctid) AS n "
+                "  FROM ziyaretler WHERE isletme_id = :i) t WHERE n % 2 = :k)"),
+                {"i": str(a.isletme_id), "k": kalan})
+
+    calistir("panosu_test", a.isletme_id, BUGUN)
+    assert _p_hayatta(admin_engine, a.isletme_id) == ilk
+
+
 @pytest.mark.parametrize("ad", ["panosu", "", None, "panosu_demo_eski", "demo", "test"])
 def test_kilit_reddeder(ad):
     with pytest.raises(IzinsizVeritabani):

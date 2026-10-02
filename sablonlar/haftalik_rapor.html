@@ -1,4 +1,5 @@
 <!doctype html>
+{% from "web/_neden.html" import neden %}
 <html lang="tr">
 <head>
 <meta charset="utf-8">
@@ -22,15 +23,26 @@
   .zarar { color: #b42318; }
   .kar { color: #146c43; }
   h2 { font-size: 11.5pt; margin: 14px 0 5px; }
-  table { width: 100%; border-collapse: collapse; font-size: 9pt; page-break-inside: avoid; }
-  th, td { border-bottom: 1px solid #e1e6eb; padding: 3px 4px; text-align: left; }
-  th { background: #f2f4f7; font-weight: 600; }
+  .alt, .eski, .ayrica { font-size: 8.5pt; color: #556; margin: 0 0 5px; }
+  .ayrica { margin-top: 5px; }
+  table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+  th, td { padding: 3px 4px; text-align: left; vertical-align: top; }
+  th { background: #f2f4f7; font-weight: 600; border-bottom: 1px solid #e1e6eb; }
+  tbody.uye { border-bottom: 1px solid #e1e6eb; page-break-inside: avoid; break-inside: avoid; }
+  tr.neden td { font-size: 8pt; color: #1d2733; padding-top: 0; padding-bottom: 4px; }
+  .kucuk { font-size: 7.5pt; color: #6b7480; margin-top: 1px; }
   td.sayi, th.sayi { text-align: right; white-space: nowrap; }
+  td.nowrap { white-space: nowrap; }
+  a { color: inherit; text-decoration: none; }
   .bos { color: #556; font-style: italic; }
+  .yazdir { position: fixed; top: 10px; right: 10px; font: inherit; padding: 6px 12px; border: 1px solid #c9d1da;
+            border-radius: 6px; background: #f2f4f7; cursor: pointer; }
+  @media print { .yazdir { display: none; } }
   footer { margin-top: 14px; font-size: 8.5pt; color: #556; border-top: 1px solid #c9d1da; padding-top: 5px; }
 </style>
 </head>
 <body>
+<button class="yazdir" onclick="window.print()">Yazdır / PDF</button>
 <div class="sayfa">
   <header>
     <h1>{{ isletme_adi }}</h1>
@@ -69,34 +81,47 @@
     </div>
   </section>
 
-  <h2>Önümüzdeki 45 günde yenilemesi riskli 10 üye</h2>
-  {% if yenilemeler %}
+  {% set r = riskli %}
+  <h2>Önümüzdeki 45 günde yenilemesi en riskli paketler</h2>
+  <p class="alt">{{ r.riskli_sayisi }} paketin yenilemesi riskli (olasılık %80'in altında) · riskteki para {{ para(r.riskli_toplam) }} · bugün itibarıyla{% if r.riskli_sayisi > tablo_satiri %} (ilk {{ tablo_satiri }} gösteriliyor){% endif %}</p>
+  {% if r.eskimis %}<p class="eski">Olasılıklar ve açıklamalar {{ tarih(r.en_eski_hesaplama) }} verisiyle hesaplandı.</p>{% endif %}
+  {% if not r.satir_sayisi %}<p class="bos">Önümüzdeki 45 günde biten paket yok.</p>
+  {% elif not r.ogeler %}<p class="bos">Önümüzdeki 45 günde yenilemesi riskli paket yok.</p>
+  {% else %}
   <table>
     <thead><tr><th>Üye</th><th>Telefon</th><th>Paket</th><th>Bitiş</th><th class="sayi">Yenileme olasılığı</th>
       <th class="sayi">Paket ücreti</th><th class="sayi">Riskteki para</th></tr></thead>
-    <tbody>
-    {% for o in yenilemeler %}
-      <tr><td>{{ o.ad_soyad }}</td><td>{{ o.telefon_e164 or '—' }}</td><td>{{ o.paket_adi }}</td>
-        <td>{{ tarih(o.bitis_tarihi) }}</td><td class="sayi">{{ yuzde(o.p_yenileme) }}</td>
-        <td class="sayi">{{ para(o.yenileme_tutari) }}</td><td class="sayi">{{ para(o.riskteki_para) }}</td></tr>
-    {% endfor %}
+    {% for o in r.ogeler %}
+    <tbody class="uye">
+      <tr><td class="nowrap">{{ o.ad_soyad }}</td><td class="nowrap">{% if o.telefon_e164 %}<a href="tel:{{ o.telefon_e164 }}">{{ telefon(o.telefon_e164) }}</a>{% else %}—{% endif %}</td><td class="nowrap">{{ o.paket_adi }}</td>
+        <td class="nowrap">{{ tarih(o.bitis_tarihi) }}
+          <div class="kucuk">{% if o.tur == 'giris' %}{{ o.kalan_giris }} giriş kaldı{% else %}{{ (o.bitis_tarihi - r.bugun).days }} gün kaldı{% endif %}</div></td>
+        <td class="sayi">{{ olasilik(o.p_yenileme) }}</td><td class="sayi">{{ para(o.yenileme_tutari) }}</td>
+        <td class="sayi">{{ para(o.riskteki_para) }}</td></tr>
+      <tr class="neden"><td colspan="7">{{ neden(o, o.aciklama) }}</td></tr>
     </tbody>
+    {% endfor %}
   </table>
-  {% else %}<p class="bos">Önümüzdeki 45 günde biten paket yok.</p>{% endif %}
+  {% endif %}
+  {% if r.dusuk_sayisi %}<p class="ayrica">Ayrıca {{ r.dusuk_sayisi }} paket düşük riskli (riskteki para {{ para(r.dusuk_toplam) }}).</p>{% endif %}
 
-  <h2>En değerli 10 sessiz üye</h2>
-  {% if sessizler %}
+  {% set s = sessiz %}
+  <h2>En değerli sessiz üyeler</h2>
+  <p class="alt">Paketi devam ettiği hâlde aktif olma olasılığı %50'nin altında · {{ s.sayi }} üye · toplam riskteki para {{ para(s.toplam_riskteki_para) }}{% if s.satir_sayisi > tablo_satiri %} (ilk {{ tablo_satiri }} gösteriliyor){% endif %}</p>
+  {% if s.eskimis %}<p class="eski">Olasılıklar ve açıklamalar {{ tarih(s.en_eski_hesaplama) }} verisiyle hesaplandı.</p>{% endif %}
+  {% if s.ogeler %}
   <table>
     <thead><tr><th>Üye</th><th>Telefon</th><th>Paket</th><th>Son ziyaret</th><th class="sayi">Gelmediği gün</th>
       <th class="sayi">Aktif olma olasılığı</th><th class="sayi">Riskteki para</th></tr></thead>
-    <tbody>
-    {% for o in sessizler %}
-      <tr><td>{{ o.ad_soyad }}</td><td>{{ o.telefon_e164 or '—' }}</td><td>{{ o.paket_adi }}</td>
-        <td>{{ tarih(o.son_ziyaret_gunu) }}</td>
+    {% for o in s.ogeler %}
+    <tbody class="uye">
+      <tr><td class="nowrap">{{ o.ad_soyad }}</td><td class="nowrap">{% if o.telefon_e164 %}<a href="tel:{{ o.telefon_e164 }}">{{ telefon(o.telefon_e164) }}</a>{% else %}—{% endif %}</td><td class="nowrap">{{ o.paket_adi }}</td>
+        <td class="nowrap">{{ tarih(o.son_ziyaret_gunu) }}</td>
         <td class="sayi">{{ o.son_ziyaretten_gecen_gun if o.son_ziyaretten_gecen_gun is not none else '—' }}</td>
-        <td class="sayi">{{ yuzde(o.p_hayatta_simdi) }}</td><td class="sayi">{{ para(o.riskteki_para) }}</td></tr>
-    {% endfor %}
+        <td class="sayi">{{ olasilik(o.p_hayatta_simdi) }}</td><td class="sayi">{{ para(o.riskteki_para) }}</td></tr>
+      <tr class="neden"><td colspan="7">{{ neden(o, o.aciklama) }}</td></tr>
     </tbody>
+    {% endfor %}
   </table>
   {% else %}<p class="bos">Sessiz üye yok.</p>{% endif %}
 

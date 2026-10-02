@@ -45,11 +45,26 @@ table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th, td { border-bottom: 1px solid #e1e6eb; padding: 5px 6px; text-align: left; vertical-align: top; }
 th { background: #f2f4f7; font-weight: 600; }
 td.sayi, th.sayi { text-align: right; white-space: nowrap; }
-td.tel { white-space: nowrap; }
+td.tel, td.nowrap { white-space: nowrap; }
 td.neden { min-width: 260px; }
 .kucuk { font-size: 12px; color: #6b7480; margin-top: 2px; }
 
 @media (max-width: 600px) {
   .kutular { grid-template-columns: 1fr; }        /* dar ekranda kutular alt alta */
   .ust nav { margin-left: 0; width: 100%; justify-content: space-between; }
+
+  /* Risk tabloları kart görünümünde (K19): her satır bir kart, her hücre "etiket  değer" */
+  .tablo-kap { overflow-x: visible; }
+  .tablo-kap table, .tablo-kap tbody, .tablo-kap tr { display: block; width: 100%; }
+  .tablo-kap thead { display: none; }
+  .tablo-kap tr { border: 1px solid #c9d1da; border-radius: 6px; padding: 6px 10px; margin-bottom: 10px; }
+  /* Hücre iki sütunlu ızgara: 1. sütun etiket, hücrenin tüm içeriği (ör. "5 gün kaldı") 2. sütunda alt alta */
+  .tablo-kap td { display: grid; grid-template-columns: 9.5em minmax(0, 1fr); width: 100%; border: none;
+                  padding: 2px 0; white-space: normal; text-align: left; }
+  .tablo-kap td::before { content: attr(data-etiket); grid-column: 1; font-size: 12px; color: #6b7480; }
+  .tablo-kap td > * { grid-column: 2; }
+  .tablo-kap td.sayi { text-align: left; }
+  .tablo-kap td.neden { display: block; min-width: 0; margin-top: 4px; padding-top: 4px;
+                        border-top: 1px solid #e1e6eb; }
+  .tablo-kap td.neden::before { display: block; }   /* "Neden" etiketi üstte, cümle tam genişlik */
 }

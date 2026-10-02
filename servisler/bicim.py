@@ -63,3 +63,13 @@ def ondalik(deger: Decimal | int | str | None, hane: int = 1) -> str:
     if sonuc == 0:
         sonuc = abs(sonuc)                       # '-0,0' yazılmasın
     return f"{sonuc:.{hane}f}".replace(".", ",")
+
+
+def telefon(e164: str | None) -> str:
+    """'+905321234567' → '+90 532 123 45 67'. +90 ile başlamayan veya 13 karakter olmayan → olduğu gibi. None → '—'."""
+    if e164 is None:
+        return "—"
+    if not e164.startswith("+90") or len(e164) != 13 or not e164[1:].isdigit():
+        return e164
+    n = e164[3:]
+    return f"+90 {n[:3]} {n[3:6]} {n[6:8]} {n[8:]}"

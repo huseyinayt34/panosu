@@ -1,6 +1,7 @@
 """Web paneli (Adım 9a, 9b): çerezli oturum, CSRF, giriş / işletme seçimi / çıkış, finans kutuları, riskli ve sessiz
 üye tabloları (TestClient + panosu_test)."""
 
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -9,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
-from conftest import basliklar
+from conftest import Kiraci, basliklar
 from kimlik_yardimci import PAROLA, acik_kayit, bearer, istemci, kayit_ol, kayit_temizligi  # noqa: F401
 
 ERISIM, YENILEME, CSRF = "panosu_erisim", "panosu_yenileme", "panosu_csrf"
@@ -315,13 +316,13 @@ BUGUN = datetime.now(timezone(timedelta(hours=3))).date()          # işletme sa
 
 
 def _riskli_uye(admin_engine, kiraci, ad, *, hesaplama=BUGUN, ziyaret_gunleri=(), p_aktif="0.35", p_yen="0.28",
-                ucret="6000.00", bitis_gun=20):
+                ucret="6000.00", bitis_gun=20, telefon=None):
     """Kiracıda üye + aktif süre paketi + yenileme riski kaydı (olasılıklar elle verilir). Ziyaretler yerel 12:00."""
     i, m, p = str(kiraci.isletme_id), str(uuid.uuid4()), str(uuid.uuid4())
     bitis = BUGUN + timedelta(days=bitis_gun)
     with admin_engine.begin() as con:
-        con.execute(text("INSERT INTO musteriler (musteri_id, isletme_id, ad_soyad) VALUES (:m, :i, :a)"),
-                    {"m": m, "i": i, "a": ad})
+        con.execute(text("INSERT INTO musteriler (musteri_id, isletme_id, ad_soyad, telefon_e164) "
+                         "VALUES (:m, :i, :a, :t)"), {"m": m, "i": i, "a": ad, "t": telefon})
         for gun in ziyaret_gunleri:
             con.execute(text("INSERT INTO ziyaretler (isletme_id, musteri_id, ziyaret_zamani) VALUES (:i, :m, :z)"),
                         {"i": i, "m": m, "z": f"{gun.isoformat()}T12:00:00+03:00"})
@@ -338,6 +339,9 @@ def _riskli_uye(admin_engine, kiraci, ad, *, hesaplama=BUGUN, ziyaret_gunleri=()
 def _sessizlik_gunleri(hesaplama):
     """10 ziyaret, 4 günde bir; sonuncusu hesaplamadan 18 gün önce → "~4 günde bir … 18 gündür … 4,5 katı"."""
     return [hesaplama - timedelta(days=18 + 4 * k) for k in range(10)]
+
+
+SATIR = '<tr><td class="nowrap" data-etiket="Üye">'          # tablo satırı başı (K19'dan beri etiketli)
 
 
 def _bolum(metin, kimlik):
@@ -396,19 +400,19 @@ def test_pano_tablo_satir_siniri_ve_tumunu_goster(istemci, iki_kiraci, admin_eng
     y = istemci.get("/pano")
     for ad in ("riskli", "sessiz"):
         b = _bolum(y.text, ad)
-        assert b.count("<tr><td>") == 1 and "Birinci Üye" in b and "İkinci Üye" not in b
+        assert b.count(SATIR) == 1 and "Birinci Üye" in b and "İkinci Üye" not in b
         assert "Tümünü göster (2)" in b
         assert f'hx-get="/pano/{ad}?tumu=1"' in b and f'href="/pano?{ad}=tumu#{ad}"' in b
 
         p = istemci.get(f"/pano/{ad}?tumu=1", headers={"HX-Request": "true"})
         assert p.status_code == 200 and p.headers["cache-control"] == "no-store"
         assert "<html" not in p.text and "hx-push-url" not in p.headers
-        assert p.text.count("<tr><td>") == 2 and "Tümünü göster" not in p.text
+        assert p.text.count(SATIR) == 2 and "Tümünü göster" not in p.text
 
         t = istemci.get(f"/pano?{ad}=tumu")
-        assert "<html" in t.text and _bolum(t.text, ad).count("<tr><td>") == 2
+        assert "<html" in t.text and _bolum(t.text, ad).count(SATIR) == 2
 
-    assert _bolum(istemci.get("/pano?riskli=baska").text, "riskli").count("<tr><td>") == 1   # yalnızca "tumu"
+    assert _bolum(istemci.get("/pano?riskli=baska").text, "riskli").count(SATIR) == 1   # yalnızca "tumu"
 
 
 def test_riskli_tablo_dusuk_riskleri_ayirir(istemci, iki_kiraci, admin_engine, oturum):
@@ -428,13 +432,13 @@ def test_riskli_tablo_dusuk_riskleri_ayirir(istemci, iki_kiraci, admin_engine, o
 
     _kiraci_cerezi(istemci, a)
     r = _bolum(istemci.get("/pano").text, "riskli")
-    assert r.count("<tr><td>") == 1 and "Riskli Bir" in r and "Düşük" not in r
+    assert r.count(SATIR) == 1 and "Riskli Bir" in r and "Düşük" not in r
     assert "1 paketin yenilemesi riskli (olasılık %80'in altında) · riskteki para 4.320,00 TL" in r
     assert "Ayrıca 2 paket düşük riskli (riskteki para 1.900,00 TL)." in r
     assert "Tümünü göster (3)" in r
 
     t = istemci.get("/pano/riskli?tumu=1", headers={"HX-Request": "true"}).text
-    assert t.count("<tr><td>") == 3 and "Düşük Bir" in t and "Düşük İki" in t
+    assert t.count(SATIR) == 3 and "Düşük Bir" in t and "Düşük İki" in t
     assert t.index("Riskli Bir") < t.index("Düşük Bir") < t.index("Düşük İki")          # riskteki para azalan
     assert "Düzenli geliyor; belirgin bir risk yok." in t
     assert "Tümünü göster" not in t and "Ayrıca" not in t
@@ -459,7 +463,7 @@ def test_gri_satir_kucuk_olasiliklar(istemci, iki_kiraci, admin_engine):
         b = _bolum(istemci.get("/pano").text, ad)
         assert '<div class="kucuk">Aktif olma <%1</div>' in b.replace("&lt;", "<")
         assert "sürdürme" not in b
-        assert '<td class="sayi">&lt;%1</td>' in b
+        assert re.search(r'<td class="sayi" data-etiket="[^"]+">&lt;%1</td>', b)
 
 
 @pytest.mark.parametrize("p_aktif,p_yen,ayristirma,beklenen", [
@@ -534,3 +538,115 @@ def test_pano_parca_bozuk_erisim_htmx_401(istemci, acik_kayit, kayit_temizligi):
         assert (y.status_code, y.headers.get("hx-refresh")) == (401, "true")
         assert y.headers["cache-control"] == "no-store"
         assert not _set_cookie(y, YENILEME) and _cerez(istemci, YENILEME) == eski_yenileme
+
+
+# ---------------------------------------------------------------- Görünüm (K19) ve haftalık rapor ucu (Adım 9c, K18)
+
+RAPOR_BASLIGI = "Önümüzdeki 45 günde yenilemesi en riskli paketler"
+
+
+def test_tablolar_telefon_baglantisi_ve_etiketler(istemci, iki_kiraci, admin_engine):
+    a, _ = iki_kiraci
+    gunler = _sessizlik_gunleri(BUGUN)
+    _riskli_uye(admin_engine, a, "Telefonlu Üye", ziyaret_gunleri=gunler, telefon="+905321234567")
+    _riskli_uye(admin_engine, a, "Telefonsuz Üye", ziyaret_gunleri=gunler, ucret="3000.00")
+    _kiraci_cerezi(istemci, a)
+    y = istemci.get("/pano").text
+    etiketler = {"riskli": ("Üye", "Telefon", "Paket", "Bitiş", "Yenileme olasılığı", "Riskteki para", "Neden"),
+                 "sessiz": ("Üye", "Telefon", "Paket", "Son ziyaret", "Gelmediği gün", "Aktif olma olasılığı",
+                            "Riskteki para", "Neden")}
+    for ad, adlar in etiketler.items():
+        b = _bolum(y, ad)
+        assert '<a href="tel:+905321234567">+90 532 123 45 67</a>' in b
+        assert '<td class="tel" data-etiket="Telefon">—</td>' in b                     # telefonsuz: bağlantı yok
+        assert b.count('href="tel:') == 1
+        govde = b.split("<tbody>")[1].split("</tbody>")[0]
+        assert govde.count("<td") == govde.count("data-etiket=") == 2 * len(adlar)      # her td etiketli
+        for etiket in adlar:
+            assert govde.count(f'data-etiket="{etiket}"') == 2
+        for etiket in ("Üye", "Paket", ("Bitiş" if ad == "riskli" else "Son ziyaret")):
+            assert f'<td class="nowrap" data-etiket="{etiket}">' in govde
+
+
+def test_panel_css_kart_gorunumu(istemci):
+    css = istemci.get("/statik/panel.css").text
+    dar = css.split("@media (max-width: 600px)")[1]
+    for kural in (".tablo-kap thead { display: none; }", "content: attr(data-etiket);",
+                  ".tablo-kap td.sayi { text-align: left; }", "grid-template-columns: 9.5em minmax(0, 1fr);",
+                  ".tablo-kap td > * { grid-column: 2; }", ".tablo-kap td.neden { display: block;"):
+        assert kural in dar
+    assert "td.tel, td.nowrap { white-space: nowrap; }" in css.split("@media")[0]
+
+
+def test_pano_rapor_sahip(istemci, iki_kiraci, admin_engine):
+    a, b = iki_kiraci
+    _riskli_uye(admin_engine, a, "Ayşe Sessiz", ziyaret_gunleri=_sessizlik_gunleri(BUGUN), telefon="+905321234567")
+    _riskli_uye(admin_engine, b, "B Gizli Üye", ziyaret_gunleri=_sessizlik_gunleri(BUGUN))
+    _kiraci_cerezi(istemci, a)
+    y = istemci.get("/pano/rapor")
+    assert y.status_code == 200 and y.headers["content-type"].startswith("text/html")
+    assert y.headers["cache-control"] == "no-store"
+    assert RAPOR_BASLIGI in y.text and "İşletme A" in y.text and "Ayşe Sessiz" in y.text
+    assert "+90 532 123 45 67" in y.text and "Yazdır / PDF" in y.text
+    assert "B Gizli Üye" not in y.text and "İşletme B" not in y.text                     # kiracı izolasyonu
+
+
+@pytest.fixture()
+def yonetici(admin_engine, iki_kiraci):
+    """A işletmesinde 'yonetici' rolünde kullanıcı (calisan fixture'ı kalıbı). Test sonunda silinir."""
+    a, _ = iki_kiraci
+    k = str(uuid.uuid4())
+    with admin_engine.begin() as con:
+        con.execute(text("INSERT INTO kullanicilar (kullanici_id, eposta, ad_soyad) VALUES (:u, :e, 'Yönetici')"),
+                    {"u": k, "e": f"{k}@test.local"})
+        con.execute(text("INSERT INTO uyelikler (isletme_id, kullanici_id, rol) VALUES (:i, :u, 'yonetici')"),
+                    {"i": str(a.isletme_id), "u": k})
+    try:
+        yield Kiraci(a.isletme_id, uuid.UUID(k), a.musteri_id, a.musteri_adi)
+    finally:
+        with admin_engine.begin() as con:
+            con.execute(text("DELETE FROM uyelikler WHERE kullanici_id = :u"), {"u": k})
+            con.execute(text("DELETE FROM denetim_kayitlari WHERE kullanici_id = :u"), {"u": k})
+            con.execute(text("DELETE FROM kullanicilar WHERE kullanici_id = :u"), {"u": k})
+
+
+def test_pano_rapor_yonetici(istemci, yonetici):
+    _kiraci_cerezi(istemci, yonetici)
+    y = istemci.get("/pano/rapor")
+    assert y.status_code == 200 and RAPOR_BASLIGI in y.text
+    assert 'href="/pano/rapor"' in istemci.get("/pano").text
+
+
+def test_pano_rapor_calisan_403(istemci, iki_kiraci, calisan):
+    _kiraci_cerezi(istemci, calisan)
+    y = istemci.get("/pano/rapor")
+    assert y.status_code == 403 and y.headers["cache-control"] == "no-store"
+    assert "Haftalık rapor yalnızca işletme sahibi ve yöneticiye açıktır." in y.text
+    assert RAPOR_BASLIGI not in y.text and " TL" not in y.text
+    assert "Haftalık rapor</a>" not in istemci.get("/pano").text                         # bağlantı çalışana yok
+
+
+def test_pano_rapor_baglantisi_sahipte(istemci, iki_kiraci):
+    a, _ = iki_kiraci
+    _kiraci_cerezi(istemci, a)
+    assert '<a href="/pano/rapor" target="_blank" rel="noopener">Haftalık rapor</a>' in istemci.get("/pano").text
+
+
+def test_pano_rapor_oturumsuz_ve_isletmesiz(istemci, iki_kiraci):
+    from servisler.kimlik import erisim_tokeni_uret
+    a, _ = iki_kiraci
+    y = istemci.get("/pano/rapor", follow_redirects=False)
+    assert (y.status_code, y.headers["location"]) == (303, "/giris")
+    istemci.cookies.set(ERISIM, erisim_tokeni_uret(a.kullanici_id, None))
+    y = istemci.get("/pano/rapor", follow_redirects=False)
+    assert (y.status_code, y.headers["location"]) == (303, "/isletme")
+    y = istemci.get("/pano/rapor", headers={"HX-Request": "true"}, follow_redirects=False)
+    assert (y.status_code, y.headers.get("hx-refresh")) == (401, "true")
+
+
+def test_pano_rapor_xss_kacisi(istemci, iki_kiraci, admin_engine):
+    a, _ = iki_kiraci
+    _riskli_uye(admin_engine, a, "<script>x</script>", ziyaret_gunleri=_sessizlik_gunleri(BUGUN))
+    _kiraci_cerezi(istemci, a)
+    y = istemci.get("/pano/rapor")
+    assert "&lt;script&gt;x&lt;/script&gt;" in y.text and "<script>x" not in y.text
