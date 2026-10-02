@@ -95,6 +95,8 @@ class FinansYanit(BaseModel):
     uye_basi_aylik_gelir: Decimal | None
     basabas_uye_sayisi: int | None
     basabas_kaynak_ay: date
-    basabas_farki: int | None
-    zarar_icin_kayip_uye: int | None          # basabas_farki ≥ 0 ise fark + 1 (başabaşta kâr ≥ 0)
+    basabas_farki: int | None                 # geçmiş ayda None (K2)
+    zarar_icin_kayip_uye: int | None          # basabas_farki ≥ 0 ise fark + 1 (başabaşta kâr ≥ 0); geçmiş ayda None
     riskteki_para_45_gun: Decimal
+    gecmis_ay: bool                           # ay, bugünün ayından önce; aktif_uye_sayisi o zaman ayın son günündeki
+    basabas_farki_ortalama: Decimal | None    # yalnızca geçmiş ayda: ortalama_aktif_uye − basabas_uye_sayisi (K2)

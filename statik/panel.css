@@ -1,0 +1,43 @@
+/* Panosu web paneli. Renkler sablonlar/haftalik_rapor.html ile uyumlu; CSS çerçevesi yok. */
+* { box-sizing: border-box; }
+body { font-family: "Segoe UI", Arial, sans-serif; color: #1d2733; background: #fff; margin: 0; font-size: 15px;
+       line-height: 1.4; }
+a { color: #1d4f91; }
+.ust { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 16px;
+       border-bottom: 2px solid #1d2733; }
+.ust .marka { font-weight: 700; font-size: 18px; color: #1d2733; text-decoration: none; }
+.ust .isletme-adi { color: #556; }
+.ust nav { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.ust form { margin: 0; }
+main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+button { font: inherit; padding: 6px 12px; border: 1px solid #c9d1da; border-radius: 6px; background: #f2f4f7;
+         color: inherit; cursor: pointer; }
+button:hover { background: #e1e6eb; }
+.mesaj, .bilgi { padding: 10px 12px; border: 1px solid #c9d1da; border-radius: 6px; background: #f2f4f7; }
+.hata { color: #b42318; font-weight: 600; }
+.bos { color: #556; font-style: italic; }
+
+.giris { max-width: 360px; margin: 32px auto; }
+.giris form, .isletme-sec form { display: flex; flex-direction: column; gap: 10px; }
+.giris label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: #556; }
+.giris input { font: inherit; padding: 8px; border: 1px solid #c9d1da; border-radius: 6px; }
+.isletme-sec ul { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 8px; max-width: 420px; }
+.isletme-sec button { width: 100%; text-align: left; padding: 10px 12px; }
+.isletme-sec button.secili { border-color: #1d2733; font-weight: 600; }
+
+.ay-secici { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.ay-secici select { font: inherit; padding: 5px 8px; border: 1px solid #c9d1da; border-radius: 6px; }
+.kutular { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.kutu { border: 1px solid #c9d1da; border-radius: 6px; padding: 10px 12px; }
+.kutu .etiket { font-size: 12px; color: #556; text-transform: uppercase; letter-spacing: .03em; }
+.kutu .deger { font-size: 21px; font-weight: 600; margin-top: 4px; }
+.kutu .satir { font-size: 14px; margin-top: 4px; }
+.kutu .satir b { font-size: 16px; }
+.kutu .not { font-size: 12.5px; color: #556; margin-top: 4px; }
+.zarar { color: #b42318; }
+.kar { color: #146c43; }
+
+@media (max-width: 600px) {
+  .kutular { grid-template-columns: 1fr; }        /* dar ekranda kutular alt alta */
+  .ust nav { margin-left: 0; width: 100%; justify-content: space-between; }
+}

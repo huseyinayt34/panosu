@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from conftest import basliklar
 from servisler import rapor_servisi, rapor_uret
-from servisler.bicim import AYLAR, ay_adi, para, tarih, yuzde
+from servisler.bicim import AYLAR, ay_adi, ondalik, para, tarih, yuzde
 from servisler.yenileme_calistir import IzinsizVeritabani
 
 
@@ -21,6 +21,14 @@ from servisler.yenileme_calistir import IzinsizVeritabani
 ])
 def test_para_bicimi(tutar, beklenen):
     assert para(tutar) == beklenen
+
+
+@pytest.mark.parametrize("deger,hane,beklenen", [
+    (Decimal("13.45"), 1, "13,5"), (Decimal("13.44"), 1, "13,4"), (Decimal("-1.25"), 1, "-1,3"), (0, 1, "0,0"),
+    (Decimal("-0.04"), 1, "0,0"), (Decimal("2.5"), 2, "2,50"), (Decimal("1234.5"), 1, "1234,5"), (None, 1, "—"),
+])
+def test_ondalik_bicimi(deger, hane, beklenen):
+    assert ondalik(deger, hane) == beklenen
 
 
 @pytest.mark.parametrize("gun,beklenen", [

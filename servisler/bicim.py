@@ -41,3 +41,13 @@ def yuzde(oran: Decimal | float | None) -> str:
     if oran is None:
         return "—"
     return f"%{Decimal(str(oran)) * 100:.0f}"
+
+
+def ondalik(deger: Decimal | int | str | None, hane: int = 1) -> str:
+    """Decimal → '13,5' (ondalık virgül, yarım yukarı, binlik ayıracı yok). None → '—'."""
+    if deger is None:
+        return "—"
+    sonuc = Decimal(deger).quantize(Decimal(1).scaleb(-hane), rounding=ROUND_HALF_UP)
+    if sonuc == 0:
+        sonuc = abs(sonuc)                       # '-0,0' yazılmasın
+    return f"{sonuc:.{hane}f}".replace(".", ",")

@@ -15,7 +15,8 @@ pytest. Windows + PowerShell. Sanal ortam: `.venv`.
 ```
 main.py → rotalar/ → (bagimliliklar.py, servisler/, semalar/) → models.py → database.py → config.py
 ```
-- `rotalar/`: HTTP katmanı. Servis istisnalarını HTTP kodlarına çevirir.
+- `rotalar/`: HTTP katmanı. Servis istisnalarını HTTP kodlarına çevirir. `rotalar/web.py`: web paneli HTML uçları
+  (çerezli oturum, CSRF; `docs/adim-9-tasarim.md`).
 - `servisler/`: iş kuralları. FastAPI import ETMEZ, HTTPException fırlatmaz.
 - `semalar/`: Pydantic istek/yanıt şemaları.
 - `models.py`: yalnızca sütunları yansıtır. Şemanın tek kaynağı SQL'dir.
@@ -23,7 +24,8 @@ main.py → rotalar/ → (bagimliliklar.py, servisler/, semalar/) → models.py 
 - `sentetik/`: BG/NBD tabanlı sentetik veri üreticisi. Yükleyici yalnızca adı `_demo` ile biten veritabanına yazar.
 - `analitik/`: modeller (V1, BG/NBD, MBG/NBD, Gamma-Gamma, yenileme simülasyonu); veritabanı bilmez.
 - `backtest/`: sentetik senaryolarda model karşılaştırması (S0–S6); veritabanı yok.
-- `sablonlar/`: Jinja2 HTML şablonları (haftalık rapor).
+- `sablonlar/`: Jinja2 HTML şablonları (haftalık rapor). `sablonlar/web/`: web paneli şablonları.
+- `statik/`: web paneli statik dosyaları (htmx.min.js 2.0.4, panel.css); `/statik` altında sunulur.
 
 ## Değiştirilemez kurallar
 1. `create_all` / `drop_all` / `reflect` kullanılmaz. `alembic/` dışında DDL yazılmaz.
@@ -77,6 +79,7 @@ uvicorn main:app --reload                        # geliştirme sunucusu, /docs
 .\.venv\Scripts\python.exe -m servisler.isletme_ac --veritabani <ad> --eposta <e> --ad-soyad <a> --isletme <ad>  # pilot işletme (_demo/_test; canlı: --canli-onay, ayrı onayla)
 .\.venv\Scripts\python.exe -m servisler.rapor_uret --veritabani panosu_demo --isletme <uuid> --cikti raporlar/haftalik.html
 .\.venv\Scripts\python.exe -m servisler.yenileme_calistir --veritabani panosu_demo --isletme <uuid>  # yenileme riski (_demo/_test)
+.\.venv\Scripts\python.exe -m sentetik.demo_sunucu                 # web paneli panosu_demo ile, 127.0.0.1:8000 (--port)
 ```
 Test adresleri: `PANOSU_TEST_APP_URL` / `PANOSU_TEST_ADMIN_URL` ortamda tanımlıysa onlar kullanılır; değilse
 `tests/conftest.py`, `.env`'deki `PANOSU_VERITABANI_URL` / `PANOSU_MIGRASYON_URL`'den yalnızca veritabanı adını
@@ -100,12 +103,12 @@ gösterecek şekilde `alembic upgrade head`.
 | 6 | Backtest: V1, BG/NBD ve MBG/NBD'nin sentetik veride (S0–S5) karşılaştırılması (ROC AUC, kalibrasyon); sonuç: `docs/backtest-sonuclari.md` | Tamam |
 | 5b | Sözleşmeli üyelik (paketler), yenileme riski (M3 + simülasyon), S6 backtest, panel ucu (`docs/adim-5b-tasarim.md`) | Tamam |
 | 5c | Yenileme modelinin gerçek yenileme verisiyle kalibrasyonu (Faz 0 verisi gelince). Test edilecek hipotezler (proje sahibinin gözlemi): (1) aktif üyelerin yenileme oranı ρ %90'ın üzerinde; (2) önceki yenileme sayısı yenilemenin güçlü habercisi; (3) az gelip yine de yenileyen bir grup var ve model onlara yanlış alarm veriyor olabilir. S6'da Riskteki Para'nın %13 düşük çıkmasının nedeni ρ = 1 varsayımıdır. | Bekliyor |
-| 7 | Panel: sessiz üyeler, gelir ve kâr özeti (giderler, başabaş), haftalık rapor (`docs/adim-7-tasarim.md`) | Tamam |
+| 7 | Panel: sessiz üyeler, gelir ve kâr özeti (giderler, başabaş), haftalık rapor (`docs/adim-7-tasarim.md`). Geçmiş ayda başabaş farkı ay ortalamasıyla (K2, `docs/adim-9-tasarim.md`) | Tamam |
 | 4b | CSV içe aktarma (gerçek Faz 0 verisi gelince; 8'e bağlı değil). Not: içe aktarmada giriş (check-in) ziyaretlerinin tutarı 0 olmalı; aksi hâlde paket geliri iki kez sayılır. | Bekliyor |
 | 8 | Gerçek kimlik doğrulama + işletme kaydı: Argon2id + JWT, tek kullanımlık yenileme tokenı, davet kodları (`docs/adim-8-tasarim.md`). Canlı `panosu` migration'ı ayrı onay bekliyor. | Tamam |
 | 8a | Soğuk başlangıç modu (9'dan önce; yalnızca plan): geçmiş verisi az olan işletmede MBG/NBD parametreleri, diğer işletmelerden veya sentetik veriden öğrenilen önsel (prior) ile başlar ve işletmenin verisi geldikçe Bayesçi olarak güncellenir. Bu dönemde panelde tahminler 'ön tahmin' etiketiyle gösterilir. | Planlandı |
 | 8b | Otomatik hesaplama (9'dan önce; yalnızca plan): finans paneli her veri girişinde anında, yenileme riskleri her gece otomatik yeniden hesaplanır. | Planlandı |
-| 9 | Web paneli (Next.js), panosu_demo ile canlı demo | Planlandı |
+| 9 | Web paneli (Jinja + HTMX, FastAPI içinde; `docs/adim-9-tasarim.md`), panosu_demo ile canlı demo | Devam ediyor (9a tamam) |
 | 10 | İzin, mesaj, geri kazanım ölçümü | Planlandı |
 | 11 | Yayına alma: Docker, CI, sunucu, güçlü ve farklı parolalar, ödeme | Planlandı |
 
@@ -130,7 +133,9 @@ Geliştirme fikirleri (karar değil; ilgili adımda tasarlanacak):
 - Raporlar raporlar/ klasörüne kaydedilir; bu klasör git'e girmez.
 
 ## Açık konular
-- finans_ozeti geçmiş bir ay için de aktif_uye_sayisi ve basabas_farki'nı bugünün aktif üyesiyle hesaplıyor. Adım 9'da ay seçilen panelde ayın son günü (veya ort. aktif) kullanılmalı; karar proje sahibinin.
+- Demo verisi 2026-10-01'e göre üretildi; panel gerçek bugünü kullandığı için ilk günden bozulmaya başlıyor (2 Ekim'de
+  Butik Reformer: Eylül sonu 81 aktif üye → 75, Ekim kasaya giren 0 TL, çünkü yenilemeler üretilmedi). Çözüm: demo
+  verisini her gece bugüne kaydıran/yeniden üreten iş; 9c'de veya yayına almada (Adım 11) ele alınacak.
 
 ## Çalışma şekli
 - Her görevin sonunda rapor: değişen dosyalar, pytest özet satırı, talimattan her sapma.

@@ -1,0 +1,22 @@
+{% extends "web/taban.html" %}
+{% block baslik %}İşletme seç · Panosu{% endblock %}
+{% block icerik %}
+<section class="isletme-sec">
+  <h1>İşletme seç</h1>
+  {% if uyelikler %}
+  <ul>
+  {% for u in uyelikler %}
+    <li>
+      <form method="post" action="/isletme">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="hidden" name="isletme_id" value="{{ u.isletme_id }}">
+        <button type="submit"{% if u.isletme_id == secili_id %} class="secili" aria-current="true"{% endif %}>
+          {{ u.isletme_adi }}{% if u.isletme_id == secili_id %} (seçili){% endif %}
+        </button>
+      </form>
+    </li>
+  {% endfor %}
+  </ul>
+  {% else %}<p class="bos">Hiçbir işletmeye üye değilsiniz.</p>{% endif %}
+</section>
+{% endblock %}

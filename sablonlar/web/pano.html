@@ -1,0 +1,18 @@
+{% extends "web/taban.html" %}
+{% block baslik %}{{ isletme_adi }} · Panosu{% endblock %}
+{% block bas %}<script src="/statik/htmx.min.js" defer></script>{% endblock %}
+{% block govde_nitelikleri %} hx-headers='{{ {"X-CSRF-Token": csrf} | tojson }}'{% endblock %}
+{% block icerik %}
+<section class="pano">
+  <form method="get" action="/pano" class="ay-secici">
+    <label for="ay">Ay</label>
+    <select id="ay" name="ay" hx-get="/pano/finans" hx-target="#finans" hx-trigger="change" hx-push-url="true">
+      {% for a in aylar %}
+      <option value="{{ '%04d-%02d' % (a.year, a.month) }}"{% if a == ay %} selected{% endif %}>{{ ay_adi(a) }}</option>
+      {% endfor %}
+    </select>
+    <noscript><button type="submit">Göster</button></noscript>
+  </form>
+  <div id="finans">{% include "web/_finans.html" %}</div>
+</section>
+{% endblock %}

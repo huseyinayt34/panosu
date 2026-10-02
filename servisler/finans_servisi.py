@@ -9,6 +9,13 @@ Gelir kuralları `servisler/gelir.py`'dedir. Ay bitmemişse (proje sahibi karar�
     hesaplanır; hangi aydan hesaplandığı basabas_kaynak_ay alanındadır.
   - Geçen ayın kâr/zararı (onceki_ay_kar_zarar) her yanıtta vardır.
 Ay bittiğinde bunların hepsi tasarım belgesindeki tanımlarla aynıdır.
+
+Geçmiş (tamamlanmış) ay (K2, proje sahibi kararı, 2026-10-01; `docs/adim-9-tasarim.md`): başabaş farkı ortalama aktif
+üyeyle ölçülür: basabas_farki_ortalama = ortalama_aktif_uye − basabas_uye_sayisi. Başabaş B = ⌈G / u⌉, u = R / ort
+olduğundan B = ⌈G·ort / R⌉; ort − B ≥ 0 (yuvarlama payı hariç) R ≥ G, yani o ayın kârda olması demektir. Ay sonu
+stoku bu tutarlılığı sağlamaz. Geçmiş ayda aktif_uye_sayisi ayın son günündeki aktif üyedir (bilgi amaçlı);
+basabas_farki ve zarar_icin_kayip_uye None'dır ("N üye kaybederseniz" yalnızca içinde bulunulan ayda anlamlı).
+İçinde bulunulan ay ve ileri tarihli ay için davranış değişmez (bugünün aktif üyesi).
 """
 
 import calendar
@@ -60,9 +67,11 @@ class FinansOzeti:
     uye_basi_aylik_gelir: Decimal | None      # basabas_kaynak_ay'ın
     basabas_uye_sayisi: int | None            # basabas_kaynak_ay'ın
     basabas_kaynak_ay: date                   # üye başı gelir ve başabaşın hesaplandığı ay
-    basabas_farki: int | None
-    zarar_icin_kayip_uye: int | None          # kaç üye kaybedilirse zarara geçilir
+    basabas_farki: int | None                 # geçmiş ayda None
+    zarar_icin_kayip_uye: int | None          # kaç üye kaybedilirse zarara geçilir; geçmiş ayda None
     riskteki_para_45_gun: Decimal
+    gecmis_ay: bool                           # ay, bugünün ayından önce mi
+    basabas_farki_ortalama: Decimal | None    # yalnızca geçmiş ayda: ortalama_aktif_uye − basabas_uye_sayisi
 
 
 def _yerel_gun(sutun):
@@ -181,17 +190,26 @@ def finans_ozeti(db: Session, ay: date, bugun: date | None = None) -> FinansOzet
     # geçen ayın tamamlanmış verisinden alınır (proje sahibi kararı, 2026-10-01).
     erken = (ay.year, ay.month) == (bugun.year, bugun.month) and bugun.day <= ILK_GUN_ESIGI
     kaynak, kaynak_ay = (gecen, gecen_ay) if erken else (bu, ay)
-    aktif_bugun = aktif_uyeler(bugun)
     basabas = kaynak.basabas_uye_sayisi
-    fark = aktif_bugun - basabas if basabas is not None else None
+    gecmis_ay = (ay.year, ay.month) < (bugun.year, bugun.month)
+    fark_ortalama = None
+    if gecmis_ay:                                   # K2: ay sonu aktif bilgi amaçlı, fark ay ortalamasıyla
+        aktif = aktif_uyeler(ay.replace(day=calendar.monthrange(ay.year, ay.month)[1]))
+        fark = None
+        if bu.ortalama_aktif is not None and basabas is not None:
+            fark_ortalama = (bu.ortalama_aktif - basabas).quantize(g.KURUS, ROUND_HALF_UP)
+    else:
+        aktif = aktif_uyeler(bugun)
+        fark = aktif - basabas if basabas is not None else None
 
     return FinansOzeti(
         ay=ay, bugun=bugun, gecen_gun=len(bu.gunluk), kasaya_giren=bu.kasaya_giren, gercek_gelir=bu.gercek_gelir,
         gider_toplam=bu.gider_toplam, gider_bugune_kadar=bu.gider_bugune_kadar, kar_zarar=bu.kar_zarar,
         gider_girilmedi=bu.gider_toplam is None, gunluk=bu.gunluk,
         onceki_ay=gecen_ay, onceki_ay_kar_zarar=gecen.kar_zarar, onceki_ay_gider_girilmedi=gecen.gider_toplam is None,
-        aktif_uye_sayisi=aktif_bugun, ortalama_aktif_uye=kaynak.ortalama_aktif,
+        aktif_uye_sayisi=aktif, ortalama_aktif_uye=kaynak.ortalama_aktif,
         uye_basi_aylik_gelir=kaynak.uye_basi_aylik_gelir, basabas_uye_sayisi=basabas, basabas_kaynak_ay=kaynak_ay,
         basabas_farki=fark, zarar_icin_kayip_uye=zarar_icin_kayip_uye(fark),
         riskteki_para_45_gun=yenileme_paneli(db, PANEL_UFUK_GUN).toplam_riskteki_para,
+        gecmis_ay=gecmis_ay, basabas_farki_ortalama=fark_ortalama,
     )

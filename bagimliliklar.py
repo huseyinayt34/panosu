@@ -6,6 +6,7 @@ veritabanından okunur; token'a rol yazılmaz.
 """
 
 from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -37,15 +38,20 @@ def _yetkisiz(mesaj: str) -> HTTPException:
     return HTTPException(status.HTTP_401_UNAUTHORIZED, mesaj, headers={"WWW-Authenticate": "Bearer"})
 
 
+def token_kimligi(erisim_tokeni: str) -> Kimlik:
+    """Erişim tokenından Kimlik (Bearer başlığı ve web çerezi ortak). Geçersizse TokenGecersiz."""
+    kullanici_id, isletme_id = erisim_tokeni_coz(erisim_tokeni)
+    return Kimlik(kullanici_id=kullanici_id, isletme_id=isletme_id)
+
+
 def kimlik_dogrula(kimlik_bilgisi: HTTPAuthorizationCredentials | None = Depends(_bearer)) -> Kimlik:
     """Bearer erişim tokenını doğrular. Eksik / geçersiz / süresi geçmiş → 401."""
     if kimlik_bilgisi is None or kimlik_bilgisi.scheme.lower() != "bearer":
         raise _yetkisiz("Kimlik doğrulaması gerekli")
     try:
-        kullanici_id, isletme_id = erisim_tokeni_coz(kimlik_bilgisi.credentials)
+        return token_kimligi(kimlik_bilgisi.credentials)
     except TokenGecersiz:
         raise _yetkisiz("Geçersiz veya süresi dolmuş token")
-    return Kimlik(kullanici_id=kullanici_id, isletme_id=isletme_id)
 
 
 def kullanici_db(kimlik: Kimlik = Depends(kimlik_dogrula)) -> Iterator[Session]:
@@ -55,8 +61,9 @@ def kullanici_db(kimlik: Kimlik = Depends(kimlik_dogrula)) -> Iterator[Session]:
         yield db
 
 
-def kiraci_db(kimlik: Kimlik = Depends(kimlik_dogrula)) -> Iterator[Session]:
-    """Kiracı bağlamlı oturum: her işlemde app.isletme_id ayarlanır, RLS devreye girer."""
+@contextmanager
+def kiraci_oturumu(kimlik: Kimlik) -> Iterator[Session]:
+    """Kiracı bağlamlı oturum: her işlemde app.isletme_id ayarlanır, RLS devreye girer. Rol db.info["rol"]'de."""
     if kimlik.isletme_id is None:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "İşletme seçilmedi")
     with SessionLocal() as db:
@@ -76,6 +83,12 @@ def kiraci_db(kimlik: Kimlik = Depends(kimlik_dogrula)) -> Iterator[Session]:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "İşletme aktif değil")
         db.info["rol"] = rol
 
+        yield db
+
+
+def kiraci_db(kimlik: Kimlik = Depends(kimlik_dogrula)) -> Iterator[Session]:
+    """Kiracı bağlamlı oturum (API): kiraci_oturumu'nun bağımlılık hâli."""
+    with kiraci_oturumu(kimlik) as db:
         yield db
 
 

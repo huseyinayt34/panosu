@@ -96,9 +96,10 @@ def test_finans_tamamlanmis_ay(istemci, iki_kiraci):
     assert D(f["ortalama_aktif_uye"]) == D("1.00")
     assert D(f["uye_basi_aylik_gelir"]) == D("3250.00")
     assert f["basabas_uye_sayisi"] == 1                                                 # ⌈1500 / 3250⌉
-    assert f["aktif_uye_sayisi"] == (1 if BUGUN < date(2026, 10, 16) else 0)
-    assert f["basabas_farki"] == f["aktif_uye_sayisi"] - 1
-    assert f["zarar_icin_kayip_uye"] == (f["basabas_farki"] + 1 if f["basabas_farki"] >= 0 else None)
+    assert f["gecmis_ay"] is True
+    assert f["aktif_uye_sayisi"] == 1                    # 30 Eylül'de 2. paket aktif; artık BUGUN'e bağlı değil (K2)
+    assert (f["basabas_farki"], f["zarar_icin_kayip_uye"]) == (None, None)
+    assert D(f["basabas_farki_ortalama"]) == D("0.00")                                  # ort 1,00 − başabaş 1
     assert D(f["riskteki_para_45_gun"]) == D("0")
 
 
@@ -148,6 +149,34 @@ def test_finans_gecmis_ay_kaynak_kendisi(istemci, iki_kiraci, oturum):
     f = _ozet(oturum, a, date(2026, 9, 1), date(2026, 10, 3))
     assert (f.basabas_kaynak_ay, f.gecen_gun, f.basabas_uye_sayisi) == (date(2026, 9, 1), 30, 1)
     assert (f.onceki_ay, f.onceki_ay_kar_zarar, f.onceki_ay_gider_girilmedi) == (date(2026, 8, 1), None, True)
+
+
+def test_finans_icinde_bulunulan_ay_eski_tanim(istemci, iki_kiraci, oturum):
+    a, _ = iki_kiraci
+    _finans_hazirla(istemci, a)
+    istemci.put("/giderler/2026-09", json={"kira": "1000.00", "personel": "500.00"}, headers=basliklar(a))
+    f = _ozet(oturum, a, date(2026, 10, 1), date(2026, 10, 3))
+    assert (f.gecmis_ay, f.basabas_farki_ortalama) == (False, None)
+    assert (f.aktif_uye_sayisi, f.basabas_uye_sayisi) == (1, 1)                 # 3 Ekim'de 2. paket aktif
+    assert (f.basabas_farki, f.zarar_icin_kayip_uye) == (0, 1)                  # aktif − başabaş (bugünün aktif üyesi)
+
+
+def test_finans_gecmis_ay_aktif_ay_sonuna_gore(istemci, iki_kiraci, oturum):
+    a, _ = iki_kiraci
+    _finans_hazirla(istemci, a)
+    f = _ozet(oturum, a, date(2026, 10, 1), date(2026, 11, 5))                  # 2. paket 16 Ekim'de bitti
+    assert f.gecmis_ay is True
+    assert f.aktif_uye_sayisi == 0                                               # 31 Ekim
+    assert f.ortalama_aktif_uye == D("0.48")                                     # 1–15 Ekim: 15 / 31 gün
+    assert (f.basabas_farki, f.zarar_icin_kayip_uye) == (None, None)
+
+
+def test_finans_gecmis_ay_gider_yoksa_ortalama_fark_yok(istemci, iki_kiraci):
+    a, _ = iki_kiraci
+    _finans_hazirla(istemci, a)
+    f = istemci.get("/panel/finans", params={"ay": "2026-08"}, headers=basliklar(a)).json()
+    assert (f["gecmis_ay"], f["basabas_farki_ortalama"], f["basabas_uye_sayisi"]) == (True, None, None)
+    assert f["aktif_uye_sayisi"] == 1                                            # 31 Ağustos'ta 1. paket aktif
 
 
 def test_finans_yanitinda_yeni_alanlar(istemci, iki_kiraci):

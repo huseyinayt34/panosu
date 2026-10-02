@@ -1,9 +1,10 @@
 from fastapi import Depends, FastAPI
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from bagimliliklar import get_db
-from rotalar import davetler, giderler, hizmetler, kimlik, musteriler, paketler, panel, rapor, ziyaretler
+from rotalar import davetler, giderler, hizmetler, kimlik, musteriler, paketler, panel, rapor, web, ziyaretler
 
 app = FastAPI(title="Panosu SaaS API")
 app.include_router(kimlik.router)
@@ -16,11 +17,9 @@ app.include_router(paketler.router)
 app.include_router(panel.router)
 app.include_router(giderler.router)
 app.include_router(rapor.router)
-
-
-@app.get("/")
-def anasayfa():
-    return {"mesaj": "Panosu API sistemine başarıyla bağlandınız!"}
+app.include_router(web.router)
+app.add_exception_handler(web.WebKesinti, web.web_kesinti_isleyici)
+app.mount("/statik", StaticFiles(directory=web.STATIK_DIZINI), name="statik")
 
 
 @app.get("/saglik")

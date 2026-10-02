@@ -1,0 +1,14 @@
+{% extends "web/taban.html" %}
+{% block baslik %}Giriş · Panosu{% endblock %}
+{% block icerik %}
+<section class="giris">
+  <h1>Giriş</h1>
+  {% if hata %}<p class="hata" role="alert">{{ hata }}</p>{% endif %}
+  <form method="post" action="/giris">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>E-posta <input type="email" name="eposta" value="{{ eposta or '' }}" autocomplete="username" required></label>
+    <label>Parola <input type="password" name="parola" autocomplete="current-password" required></label>
+    <button type="submit">Giriş yap</button>
+  </form>
+</section>
+{% endblock %}

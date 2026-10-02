@@ -1,0 +1,65 @@
+{% if not finans_gorur %}
+<p class="bilgi">Finans bilgileri yalnızca sahip ve yöneticiye açıktır.</p>
+{% else %}{% set f = finans %}
+<div class="kutular">
+  <div class="kutu">
+    <div class="etiket">Kâr / zarar</div>
+    {% if f.gecmis_ay %}
+    <div class="satir">{{ ay_adi(f.ay) }} sonucu:</div>
+    {% if f.gider_girilmedi %}<div class="not">gider girilmedi (gerçek gelir {{ para(f.gercek_gelir) }})</div>
+    {% else %}<div class="deger {{ 'zarar' if f.kar_zarar < 0 else 'kar' }}">{{ para(f.kar_zarar) }}</div>{% endif %}
+    {% else %}
+    <div class="satir">Bu ay şimdiye kadar ({{ f.gecen_gun }} gün):</div>
+    {% if f.gider_girilmedi %}<div class="not">gider girilmedi (gerçek gelir {{ para(f.gercek_gelir) }})</div>
+    {% else %}<div class="deger {{ 'zarar' if f.kar_zarar < 0 else 'kar' }}">{{ para(f.kar_zarar) }}</div>{% endif %}
+    <div class="satir">{{ ay_adi(f.onceki_ay) }} sonucu:
+      {% if f.onceki_ay_gider_girilmedi %}<span class="not">gider girilmedi</span>
+      {% else %}<b class="{{ 'zarar' if f.onceki_ay_kar_zarar < 0 else 'kar' }}">{{ para(f.onceki_ay_kar_zarar) }}</b>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="kutu">
+    <div class="etiket">Gelir</div>
+    <div class="satir">Gerçek gelir: <b>{{ para(f.gercek_gelir) }}</b></div>
+    <div class="satir">Kasaya giren: <b>{{ para(f.kasaya_giren) }}</b></div>
+    <div class="not">Gerçek gelir: paketlerin bu aya düşen payı. Kasaya giren: bu ay tahsil edilen.</div>
+  </div>
+
+  <div class="kutu">
+    <div class="etiket">Gider</div>
+    {% if f.gider_girilmedi %}<div class="deger bos">girilmedi</div>
+    {% else %}<div class="deger">{{ para(f.gider_toplam) }}</div>{% endif %}
+    <div class="not">{{ ay_adi(f.ay) }} gider toplamı</div>
+  </div>
+
+  <div class="kutu">
+    <div class="etiket">Aktif üye / başabaş</div>
+    {% if f.gecmis_ay %}
+    <div class="deger">Ort. aktif {{ ondalik(f.ortalama_aktif_uye) }} / başabaş {{ f.basabas_uye_sayisi if f.basabas_uye_sayisi is not none else '—' }}</div>
+    <div class="not">
+      {% if f.basabas_farki_ortalama is none %}Başabaş için gider ve gelir gerekir.
+      {% elif f.basabas_farki_ortalama >= 0 %}Başabaşın {{ ondalik(f.basabas_farki_ortalama) }} üye üstünde (ay ortalaması)
+      {% else %}Başabaşın {{ ondalik(-f.basabas_farki_ortalama) }} üye altında (ay ortalaması){% endif %}
+    </div>
+    <div class="not">Ay sonunda {{ f.aktif_uye_sayisi }} aktif üye</div>
+    {% else %}
+    <div class="deger">{{ f.aktif_uye_sayisi }} / {{ f.basabas_uye_sayisi if f.basabas_uye_sayisi is not none else '—' }}</div>
+    <div class="not">
+      {% if f.basabas_farki is none %}Başabaş için gider ve gelir gerekir.
+      {% elif f.basabas_farki >= 0 %}Başabaşın {{ f.basabas_farki }} üye üzerinde.
+      {{ f.zarar_icin_kayip_uye }} üye kaybederseniz zarara geçersiniz.
+      {% else %}Başabaşın {{ -f.basabas_farki }} üye altında.{% endif %}
+    </div>
+    {% if f.basabas_kaynak_ay != f.ay %}<div class="not">Başabaş {{ ay_adi(f.basabas_kaynak_ay) }} verisinden (ayın ilk 7 günü)</div>{% endif %}
+    {% endif %}
+  </div>
+
+  <div class="kutu">
+    <div class="etiket">Riskteki para (45 gün)</div>
+    <div class="deger">{{ para(f.riskteki_para_45_gun) }}</div>
+    <div class="not">Bugün itibarıyla ({{ tarih(f.bugun) }}); seçili aydan bağımsızdır. Önümüzdeki 45 günde biten
+      paketlerde yenilenmeme olasılığı × paket ücreti.</div>
+  </div>
+</div>
+{% endif %}
