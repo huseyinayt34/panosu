@@ -1,20 +1,32 @@
 # Panosu — Müşteri Zekâ Platformu
 
-Tekrar eden müşterisi olan işletmeler (salon, spor salonu, klinik vb.) için **çok kiracılı (multi-tenant) müşteri analitiği backend'i**.
-Amaç: hangi müşterinin kaybedilmek üzere olduğunu (churn) olasılıksal olarak tahmin etmek ve bunu **"Riskteki Para"** olarak göstermek.
+Tekrar eden müşterisi olan işletmeler (pilates/spor stüdyosu, salon, klinik vb.) için **çok kiracılı (multi-tenant) müşteri analitiği**.
+Amaç: hangi müşterinin kaybedilmek üzere olduğunu (churn) olasılıksal olarak tahmin etmek, bunu **"Riskteki Para"** olarak göstermek ve her riskli üye için **neden riskli** olduğunu tek cümleyle açıklamak.
 
-> Durum: **Backend canlıya hazırlanıyor**: çok kiracılı veritabanı ve RLS, müşteri/hizmet/ziyaret/paket API'si, MBG/NBD tabanlı yenileme riski ve Riskteki Para, finans paneli ve haftalık rapor, **gerçek kimlik doğrulama** (Argon2id parola, JWT erişim tokenı, tek kullanımlık yenileme tokenı, davet kodları). Sıradaki: web paneli (Next.js).
+## Canlı demo
+
+**https://panosu.onrender.com**
+
+- Giriş formu demo hesabıyla dolu gelir; **Giriş**'e basmanız yeterli. Ardından bir **[DEMO]** işletme seçin; en zengin örnekler **Butik Reformer** ve **Denge Pilates Stüdyosu**.
+- Panelde: aylık gelir, gider, kâr ve **başabaş** (kaç aktif üyede kâra geçildiği), **yenilemesi riskli üyeler** (her biri için "neden riskli" açıklaması), **sessiz üyeler** ve yazdırılabilir **haftalık rapor**.
+- Veriler sentetiktir; gerçek işletme verisi yoktur. Demo verisi **her gece bugüne kaydırılır**, böylece panel her gün güncel görünür.
+- Demo **salt okunurdur**: veri değiştiren istekler `403` döner.
+- Ücretsiz sunucu boştayken uyur; ilk açılış **30–60 saniye** sürebilir.
+
+> Durum: Portföy sürümü yayında. Backend, modeller, web paneli ve canlı demo tamam. Sıradaki: modelleri ayrıntılı anlatan matematik raporu ve tanıtım videosu.
 
 ---
 
 ## Öne çıkanlar
 
 - **Veritabanı katmanında kiracı izolasyonu:** Tüm işletmeler tek PostgreSQL veritabanını paylaşır; izolasyon uygulama kodundaki `WHERE` filtrelerine değil, **Row-Level Security (RLS)** politikalarına dayanır. Koddaki bir hata bile başka işletmenin verisini sızdıramaz.
-- **En az yetki ilkesi:** Uygulama, RLS'yi atlayamayan ve tablo oluşturamayan kısıtlı `panosu_app` rolüyle bağlanır. Şema değişiklikleri yalnızca ayrı bir DDL rolüyle, Alembic üzerinden yapılır.
+- **En az yetki ilkesi:** Uygulama, RLS'yi atlayamayan ve tablo oluşturamayan kısıtlı `panosu_app` rolüyle bağlanır. Şema değişiklikleri yalnızca ayrı bir DDL rolüyle, Alembic üzerinden yapılır. Üretim modunda uygulama yanlış rolle veya yönetici adresi tanımlıyken açılmayı reddeder.
+- **Olasılıksal model, açıklanabilir çıktı:** Yenileme riski MBG/NBD + sonsal simülasyonla hesaplanır; panel, riski "sessizlik" ve "kalan süre / kalan hak" paylarına ayırıp sade bir cümleyle anlatır.
+- **Model seçimi kanıtla:** Modeller, gerçek parametreleri bilinen sentetik senaryolarda (S0–S6) ROC AUC ve kalibrasyonla karşılaştırıldı (`docs/backtest-sonuclari.md`).
 - **Kiracı bütünlüğü:** Alt tablolar `(isletme_id, x_id)` bileşik yabancı anahtarlarıyla bağlıdır; bir işletmenin ziyareti başka işletmenin müşterisine bağlanamaz.
 - **Güvenlik bekçisi testleri:** `create_all()` gibi RLS'siz tablo üretebilecek çağrıları, süper kullanıcıyla bağlanmayı ve rol ayrıcalıklarını otomatik yakalayan testler.
 - **Denetim ve KVKK dostu tasarım:** Değişiklikler trigger'larla `denetim_kayitlari` tablosuna yazılır; izni olmayan müşteriye mesaj gönderimi veritabanında engellenir; müşteri anonimleştirme fonksiyonu mevcuttur.
-- **Kapsamlı otomatik test paketi:** izolasyon, güvenlik, API ve veri doğrulama.
+- **Kapsamlı otomatik test paketi:** izolasyon, güvenlik, kimlik doğrulama, API, web paneli, modeller ve veri doğrulama.
 
 ---
 
@@ -22,10 +34,11 @@ Amaç: hangi müşterinin kaybedilmek üzere olduğunu (churn) olasılıksal ola
 
 ```mermaid
 flowchart LR
-    C[İstemci] -->|HTTP| R[FastAPI rotaları<br/>rotalar/]
-    R --> V[Pydantic şemaları<br/>semalar/]
-    R --> K[Kimlik ve kiracı bağlamı<br/>bagimliliklar.py]
-    R --> S[İş mantığı<br/>servisler/]
+    T[Tarayıcı] -->|HTML + HTMX<br/>çerezli oturum, CSRF| W[Web paneli<br/>rotalar/web.py]
+    C[API istemcisi] -->|JSON, Bearer token| R[FastAPI rotaları<br/>rotalar/]
+    W --> S[İş mantığı<br/>servisler/]
+    R --> S
+    S --> A[Modeller<br/>analitik/]
     S --> O[SQLAlchemy ORM<br/>models.py]
     O -->|panosu_app rolü<br/>app.isletme_id| DB[(PostgreSQL<br/>RLS politikaları)]
     M[Alembic migrasyonları] -->|DDL rolü| DB
@@ -33,42 +46,57 @@ flowchart LR
 
 | Katman | Dosya / klasör | Görev |
 |---|---|---|
-| Giriş | `main.py` | Uygulamayı ve rotaları birleştirir |
-| Rotalar | `rotalar/` | HTTP uçları; servis hatalarını HTTP kodlarına çevirir |
+| Giriş | `main.py` | Uygulamayı, ara katmanları ve rotaları birleştirir |
+| Rotalar | `rotalar/` | JSON API uçları; servis hatalarını HTTP kodlarına çevirir |
+| Web paneli | `rotalar/web.py`, `sablonlar/web/`, `statik/` | Jinja2 + HTMX paneli; çerezli oturum ve CSRF |
+| Ara katman | `rotalar/ara_katman.py` | Salt okunur demo modu, üretim güvenlik başlıkları |
 | Doğrulama | `semalar/` | Pydantic v2 istek/yanıt şemaları |
-| İş mantığı | `servisler/` | Müşteri, hizmet ve ziyaret işlemleri; E.164 telefon normalleştirme |
+| İş mantığı | `servisler/` | Müşteri, ziyaret, paket, gider, finans, yenileme riski, kimlik ve rapor işlemleri |
 | Bağlam | `bagimliliklar.py`, `database.py` | Her işlem başında aktif işletme/kullanıcıyı PostgreSQL'e bildirir |
-| Veri modeli | `models.py` | Kullanıcı, İşletme, Üyelik, Müşteri, Hizmet, Ziyaret, ZiyaretKalemi |
+| Veri modeli | `models.py` | Tabloların ORM karşılıkları (şemanın tek kaynağı SQL'dir) |
 | Şema | `faz1_sema.sql`, `alembic/` | Tablolar, RLS, view'lar, trigger'lar, GRANT'lar |
-| Analiz | `MusteriAnalizi.py` | Churn risk modeli (V1 çekirdek) |
-| Sentetik veri | `sentetik/` | BG/NBD tabanlı demo verisi üreticisi ve V1 değerlendirmesi |
-| Testler | `tests/` | İzolasyon, güvenlik bekçisi, API ve birim testleri |
+| Modeller | `analitik/` | V1, BG/NBD, MBG/NBD, Gamma-Gamma, yenileme simülasyonu, "neden riskli" açıklaması (veritabanı bilmez) |
+| Backtest | `backtest/` | Sentetik senaryolarda model karşılaştırması (S0–S6) |
+| Sentetik veri | `sentetik/` | BG/NBD tabanlı demo verisi, demo kurulumu ve gece tazelemesi |
+| Yayın | `Dockerfile`, `.github/workflows/` | Docker imajı; demo kurulumu ve gece tazelemesi iş akışları |
+| Testler | `tests/` | İzolasyon, güvenlik bekçisi, API, web ve birim testleri |
 
 ### Veritabanı öne çıkanları
-- **Tablolar:** işletmeler, kullanıcılar, üyelikler, müşteriler, hizmetler, ziyaretler, ziyaret kalemleri, churn skorları, kampanyalar, mesaj gönderimleri, geri kazanımlar, müşteri izinleri, denetim kayıtları
-- **Hazır raporlar (view):** `v_riskteki_para_paneli`, `v_musteri_ozet`, `v_guncel_churn_skorlari`, `v_geri_kazanim_ozeti`, `v_musteri_hizmet_dagilimi` — hepsi `security_invoker` ile RLS'ye tabidir
+- **Tablolar:** işletmeler, kullanıcılar, üyelikler, müşteriler, hizmetler, ziyaretler, ziyaret kalemleri, müşteri paketleri, işletme giderleri, yenileme riskleri, churn skorları, kampanyalar, mesaj gönderimleri, geri kazanımlar, müşteri izinleri, denetim kayıtları
+- **Hazır raporlar (view):** `v_riskteki_para_paneli`, `v_musteri_ozet`, `v_yenileme_paneli`, `v_sessiz_uyeler`, `v_guncel_churn_skorlari` ve diğerleri; hepsi `security_invoker` ile RLS'ye tabidir
+
+### Yayın
+Docker imajı **Render**'da (Frankfurt) çalışır; veritabanı **Neon** PostgreSQL'dir (Frankfurt). Demo veritabanı **GitHub Actions** ile kurulur (`demo-kur.yml`, elle tetiklenir) ve her gece 03:00'te (İstanbul) bugüne kaydırılır (`demo-tazele.yml`). Ayrıntılar: `docs/adim-11-tasarim.md`.
 
 ---
 
-## Churn risk modeli (V1)
+## Modeller
 
-Her müşterinin ziyaretleri arasındaki gün farklarından kişisel bir **geliş ritmi** çıkarılır:
+Ayrıntılı türetmeler ve varsayımlar ayrı bir **matematik raporunda** anlatılacak (hazırlanıyor). Kısa özet:
 
-$$\text{aralık}_i \sim \mathcal{N}(\mu, \sigma^2)$$
+**MBG/NBD (Batislam, Denizel & Filiztekin, 2007).** Hayattaki bir müşteri ziyaretlerini Poisson($\lambda$) süreciyle yapar; ilk ziyaret dahil her ziyaretten sonra $p$ olasılıkla bırakır. Müşteriler arası farklılık $\lambda \sim \text{Gamma}(r, \alpha)$ ve $p \sim \text{Beta}(a, b)$ ile modellenir; parametreler her işletmenin kendi verisinden en çok olabilirlik (MLE) ile kestirilir. $x$ tekrar ziyaret sayısı, $t_x$ son ziyaretin zamanı, $T$ gözlem süresi olmak üzere:
 
-Son ziyaretten bu yana geçen gün $r$ ise risk, *"müşterinin şimdiye kadar geri dönmüş olması gerekirken dönmemiş olma"* olasılığıdır:
+$$P(\text{hayatta} \mid x, t_x, T) = \left[1 + \frac{a}{b + x}\left(\frac{\alpha + T}{\alpha + t_x}\right)^{r + x}\right]^{-1}$$
 
-$$\text{risk} = \Phi\left(\frac{r - \mu}{\sigma_{\text{etkin}}}\right), \qquad \sigma_{\text{etkin}} = \max(\sigma,\; 0.25\,\mu)$$
+**Yenileme olasılığı (sonsal simülasyon).** Üye, paketi bittiği anda hâlâ hayattaysa yeniler. Her paket için 2 000 simülasyon: önce şu an hayatta olup olmadığı çekilir; hayattaysa $\lambda$ ve $p$ sonsal dağılımlarından (Gamma ve Beta) çekilir ve paket sonuna kadar ileri simüle edilir. $P(\text{yenileme})$, hayatta biten simülasyonların oranıdır. Gerçek yenileme verisiyle henüz kalibre edilmemiştir.
 
-Taban değer, çok düzenli müşterilerde $\sigma \to 0$ olduğunda riskin ani sıçramasını önler. Risk değeri dört segmente ayrılır: **Güvenli** (< 0.35), **İzlenmeli** (< 0.75), **Yüksek Risk** (< 0.95), **Kritik**.
+**Riskteki Para.** Bitişine 45 gün (varsayılan) kalan paketler üzerinden:
 
-> Sonraki fazlarda bu model, olasılıksal CLV (BG/NBD + Gamma-Gamma), sağkalım analizi ve makine öğrenmesi modelleriyle karşılaştırılacaktır.
+$$\text{Riskteki Para} = \sum_{\text{paket}} \big(1 - P(\text{yenileme})\big) \times \text{paket fiyatı}$$
+
+**"Neden riskli?" açıklaması.** Yenileme olasılığı iki çarpana ayrılır: $P(\text{yenileme}) = P(\text{şu an aktif}) \times q$, burada $q$ aktifse paketi sürdürme olasılığıdır. Logaritma alınca risk toplamsal iki paya bölünür:
+
+$$-\ln P(\text{yenileme}) = \underbrace{-\ln P(\text{şu an aktif})}_{A:\ \text{sessizlik}} + \underbrace{-\ln q}_{B:\ \text{kalan süre / hak}}$$
+
+$A \ge B$ ise ana neden sessizliktir ("normal aralığının k katı süredir gelmiyor"), değilse paketin kalan süresi veya kalan hakkıdır. Açıklama yalnızca modelin kullandığı bilgiden üretilir.
+
+**Karşılaştırma modelleri.** V1 (kişisel geliş aralığı ~ Normal, risk $= \Phi\big((r-\mu)/\sigma_{\text{etkin}}\big)$), BG/NBD ve basit bir kural ("son 21 günde en fazla 1 giriş"). Sentetik stüdyo senaryosunda (S6) yenileme tahmininde MBG/NBD + simülasyon ROC AUC 0.83, kural 0.72 verdi; tüm sonuçlar `docs/backtest-sonuclari.md`'de.
 
 ---
 
 ## API uçları
 
-Kiracı uçları `Authorization: Bearer <erisim_tokeni>` ister; işletme kimliği yalnızca imzalı tokendan okunur.
+Web paneli tarayıcıda `/` adresindedir (çerezli oturum). Aşağıdaki JSON uçlarında kiracı uçları `Authorization: Bearer <erisim_tokeni>` ister; işletme kimliği yalnızca imzalı tokendan okunur.
 
 | Metot | Yol | Açıklama |
 |---|---|---|
@@ -104,13 +132,26 @@ Kiracı uçları `Authorization: Bearer <erisim_tokeni>` ister; işletme kimliğ
 | `GET` | `/hizmetler/{id}` | Hizmet detayı |
 | `PATCH` | `/hizmetler/{id}` | Hizmet güncelle / pasifleştir (sahip/yönetici; silme yok) |
 
+| Metot | Yol | Açıklama |
+|---|---|---|
+| `POST` | `/musteriler/{id}/paketler` | Üyelik paketi sat (süre bazlı veya giriş bazlı) |
+| `GET` | `/musteriler/{id}/paketler` | Müşterinin paketleri |
+| `GET` | `/paketler/{id}` | Paket detayı |
+| `PATCH` | `/paketler/{id}` | Paket güncelle |
+| `GET` | `/panel/yenilemeler` | Bitişine `gun` gün (varsayılan 45) kalan paketler: yenileme olasılığı ve Riskteki Para |
+| `GET` | `/panel/sessiz-uyeler` | Aktif paketi olup şu an aktif olma olasılığı eşiğin (varsayılan 0.5) altında kalan üyeler |
+| `GET` | `/panel/finans` | Aylık gelir, gider, kâr ve başabaş (`ay=YYYY-AA`, verilmezse bu ay) |
+| `PUT` | `/giderler/{ay}` | Aylık gider kaydet (sahip/yönetici) |
+| `GET` | `/giderler/{ay}` | Aylık gider (sahip/yönetici) |
+| `GET` | `/rapor/haftalik` | Yazdırılabilir haftalık rapor, HTML (sahip/yönetici) |
+
 Sunucu çalışırken etkileşimli dokümantasyon: `http://127.0.0.1:8000/docs`
 
 ---
 
 ## Kurulum
 
-**Gereksinimler:** Python 3.12+, PostgreSQL 15+
+**Gereksinimler:** Python 3.14, PostgreSQL 15+
 
 ```bash
 # 1. Bağımlılıklar
@@ -142,39 +183,34 @@ pytest
 
 ## Sentetik veri ve demo
 
-Gerçek veri gelmeden modelleri sınamak için `sentetik/` paketi, BG/NBD modelinin varsayımlarıyla birebir aynı süreçle veri üretir: her müşterinin gizli geliş hızı (Gamma), her ziyaretten sonra kaybolma olasılığı (Beta) ve harcama eğilimi vardır. Gerçek parametreler bilindiği için modellerin başarısı (ör. ROC AUC) doğrudan ölçülebilir.
+Gerçek veri gelmeden modelleri sınamak için `sentetik/` paketi, BG/NBD modelinin varsayımlarıyla birebir aynı süreçle veri üretir: her müşterinin gizli geliş hızı (Gamma), her ziyaretten sonra kaybolma olasılığı (Beta) ve harcama eğilimi vardır. Gerçek parametreler bilindiği için modellerin başarısı (ör. ROC AUC) doğrudan ölçülebilir. Stüdyo demoları (Denge Pilates, Butik Reformer) buna üyelik paketlerini ve aylık giderleri ekler.
 
 - Demo verisi ayrı bir veritabanında, `panosu_demo`'da tutulur; canlı veritabanına sentetik veri yazılmaz.
 - **`_demo` kilidi:** Yükleyici hedef veritabanını `--veritabani` ile açıkça ister ve adı `_demo` ile bitmiyorsa bağlantı kurmadan durur.
+- **Tekrarlanabilir kurulum:** `sentetik.demo_kur`, tüm demoyu sabit tohumlarla baştan kurar; `sentetik.demo_tazele`, tarihleri bugüne kaydırıp riskleri yeniden hesaplar.
 
 ```bash
-python -m sentetik --sadece-uret                   # veritabanına dokunmadan üret + V1 modelinin ROC AUC'u
-python -m sentetik --veritabani panosu_demo        # üret ve panosu_demo'ya yükle
+python -m sentetik --sadece-uret                     # veritabanına dokunmadan üret + V1 modelinin ROC AUC'u
+python -m sentetik.demo_kur --veritabani panosu_demo # tüm [DEMO] verisini sabit tohumlarla baştan kur (demo parolası ortamdan okunur)
+python -m sentetik.demo_sunucu                       # web panelini panosu_demo ile yerelde aç (127.0.0.1:8000)
+python -m backtest                                   # model karşılaştırması → docs/backtest-sonuclari.md
 ```
 
 ---
 
 ## Yol haritası
 
-Tamamlanan: çok kiracılı şema ve RLS, Alembic baseline, müşteri/hizmet/ziyaret API'si, sentetik veri motoru.
+Tamamlanan: çok kiracılı şema ve RLS, Alembic, müşteri/hizmet/ziyaret/paket API'si, sentetik veri motoru, model kütüphanesi ve backtest, yenileme riski ve Riskteki Para, finans paneli ve haftalık rapor, gerçek kimlik doğrulama, web paneli, canlı demo.
 
-| # | Adım |
-|---|---|
-| 5 | Skor motoru v2: BG/NBD + Gamma-Gamma ile Riskteki Para |
-| 6 | Backtest: V1 ve BG/NBD'nin sentetik veride karşılaştırılması |
-| 7 | Panel API'si: Riskteki Para listesi, işletme özeti |
-| 8 | Gerçek kimlik doğrulama ve işletme kaydı (tamamlandı) |
-| 9 | Web paneli (Next.js) ve canlı demo |
-| 10 | İzin, mesaj ve geri kazanım ölçümü |
-| 11 | Yayına alma: Docker, CI, sunucu, ödeme |
+Sıradaki: matematik raporu ve tanıtım videosu. Sonra (gerçek veri gerektirenler): CSV içe aktarma, yenileme modelinin gerçek veriyle kalibrasyonu, az verili işletmeler için soğuk başlangıç (Bayesçi önsel), izin/mesaj ve geri kazanım ölçümü.
 
-Araştırma rafı: RFM/kohort, sağkalım analizi (Kaplan-Meier, Cox), XGBoost + SHAP, kampanya simülatörü / A-B güç analizi.
+Ayrıntılı yol haritası: `CLAUDE.md`.
 
 ---
 
 ## Teknolojiler
 
-Python · FastAPI · SQLAlchemy 2 · Pydantic v2 · PostgreSQL (RLS, PL/pgSQL, view, trigger) · Alembic · pytest
+Python · FastAPI · SQLAlchemy 2 · Pydantic v2 · Jinja2 · HTMX · PostgreSQL (RLS, PL/pgSQL, view, trigger) · Alembic · NumPy · SciPy · pytest · Docker · Render · Neon · GitHub Actions
 
 ## Geliştirici
 
