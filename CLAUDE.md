@@ -62,7 +62,7 @@ main.py → rotalar/ → (bagimliliklar.py, servisler/, semalar/) → models.py 
 | `panosu` | Canlı; yalnızca gerçek işletme verisi | Yalnızca salt-okunur sorgu. Her yazma işlemi açık onay ister. `alembic upgrade` asla çalıştırılmaz (yalnızca onaylı `stamp`). |
 | `panosu_test` | pytest | Silinip `alembic upgrade head` ile yeniden kurulabilir |
 | `panosu_demo` | Sentetik veri, demo, backtest | Kuruldu; 5 [DEMO] işletme, sentetik veri; [DEMO] Denge Pilates'te üyelik paketleri, yenileme riskleri ve 2026-03'ten itibaren her ay 330.000 TL demo gideri (Panosu'ya geçiş ayı) (paket dönemi ziyaret tutarları 0); [DEMO] Butik Reformer: Faz 0 demosu (p ~ Beta(1, 290), ayda 5 yeni üye; ~75 aktif üye, 18 ay paket/ziyaret geçmişi, her ay gider). Yükleyici yalnızca _demo adlarına yazar. Demo sunucusunun her açılışında ve her gece 03:00'te bugüne kaydırılır (K11). |
-| Neon `panosu_demo` (yayın) | Canlı demo | Yalnızca Render (panosu_app) ve GitHub Actions bağlanır; yerelden bağlanılmaz; kurulum demo-kur.yml, tazeleme demo-tazele.yml |
+| Neon `panosu_demo` (yayın) | Canlı demo | Yalnızca Render (panosu_app) ve GitHub Actions bağlanır; yerelden bağlanılmaz; kurulum demo-kur.yml, tazeleme demo-tazele.yml; adresler postgresql+psycopg2:// ile başlar |
 
 Sentetik veri ASLA `panosu`'ya yazılmaz.
 
@@ -125,7 +125,7 @@ gösterecek şekilde `alembic upgrade head`.
 | 8b | Otomatik hesaplama (9'dan önce; yalnızca plan): finans paneli her veri girişinde anında, yenileme riskleri her gece otomatik yeniden hesaplanır. (demo için gece tazeleme 9c'de yapıldı; gerçek işletmeler bekliyor) | Planlandı |
 | 9 | Web paneli (Jinja + HTMX, FastAPI içinde; `docs/adim-9-tasarim.md`), panosu_demo ile canlı demo | Tamam |
 | 10 | İzin, mesaj, geri kazanım ölçümü | Planlandı |
-| 11 | Yayına alma: Docker, CI, sunucu, güçlü ve farklı parolalar, ödeme (`docs/adim-11-tasarim.md`) | Devam ediyor (minimum yayın: Docker, Render + Neon, Actions; ödeme sonraya) |
+| 11 | Yayına alma: Docker, CI, sunucu, güçlü ve farklı parolalar, ödeme (`docs/adim-11-tasarim.md`) | Tamam (minimum yayın 2026-10-02: https://panosu.onrender.com; ödeme sonraya) |
 
 Geliştirme fikirleri (karar değil; ilgili adımda tasarlanacak):
 - Adım 4b: yapay zekâ ile CSV sütun eşleme önerisi; yoklama defteri fotoğrafından tablo çıkarma.

@@ -126,4 +126,18 @@ Notlar:
 - Sunucuda `log_statement` `ddl` veya `all` ise `ALTER ROLE … PASSWORD` satırı veritabanı günlüğüne düşebilir;
   Neon'da kontrol edilmeli.
 
-Canlı adres:
+Canlı adres: https://panosu.onrender.com (2026-10-02'de yayına alındı)
+- Web: Render Free, Frankfurt, Docker; ilk deploy ea685ca. Health check: /statik/panel.css.
+- Veritabanı: Neon Free, AWS eu-central-1 (Frankfurt), PostgreSQL 18.6; veritabanı panosu_demo, yönetici rolü panosu_demo_owner.
+- Uyanık tutma: UptimeRobot, 5 dakikada bir /statik/panel.css (veritabanına dokunmaz; Neon boşta uyumaya devam eder).
+- Doğrulama (2026-10-02): /saglik {"durum":"ok"}; [DEMO] Butik Reformer 79 aktif üye, başabaş 63; çerezler Secure ve
+  HttpOnly; POST /musteriler -> 403 "Bu demo salt okunur"; GitHub Actions "Demo kurulumu" (205,9 sn) ve "Demo tazeleme"
+  (5 işletmede d = 0) yeşil.
+- Kurulumda öğrenilenler:
+  (a) SQLAlchemy 2.1, öneksiz postgresql:// adresinde psycopg 3 sürücüsünü arar. Yayın paketinde psycopg2 olduğundan
+      GitHub gizlilerindeki ve Render'daki adresler postgresql+psycopg2:// ile başlar.
+  (b) PANOSU_VERITABANI_URL gizlisindeki kullanıcı panosu_app olmalıdır; değilse
+      demo_kur --uygulama-parolasi-ayarla veri silmeden durur.
+- Not: Riskteki Para (Butik Reformer, 45 gün) canlıda 22.379,85 TL, yerel karşılaştırmada 22.380,70 TL (fark 0,85 TL).
+  Muhtemel neden (doğrulanmadı): Windows ile Linux numpy/scipy derlemeleri arasındaki kayan nokta farkı ve MBG/NBD'de
+  a+b'nin zayıf belirlenmesi (sırt). Matematik raporu ve (mu, kappa) yeniden parametreleme kararı ile birlikte ele alınacak.
