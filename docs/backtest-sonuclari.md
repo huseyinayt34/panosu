@@ -1,5 +1,7 @@
 # Backtest sonuçları (Adım 6)
 
+Bu sonuçlar kanonik sıra (Adım 4b-1) öncesi koddan üretildi; (μ, κ) adımında yeniden üretilecek.
+
 `python -m backtest` tarafından üretilir; elle düzenlenmez. Tasarım: `docs/adim-5-6-tasarim.md`.
 
 Modeller: M0 = V1 (aralık ~ Normal), M1 = BG/NBD, M3 = MBG/NBD; ciro tahmininde sepet M2 (Gamma-Gamma).

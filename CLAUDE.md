@@ -19,10 +19,13 @@ main.py → rotalar/ → (bagimliliklar.py, servisler/, semalar/) → models.py 
   (çerezli oturum, CSRF; `docs/adim-9-tasarim.md`). `rotalar/ara_katman.py`: salt okunur demo (K25) ve üretim
   güvenlik başlıkları (K27, `docs/adim-11-tasarim.md`).
 - `servisler/`: iş kuralları. FastAPI import ETMEZ, HTTPException fırlatmaz.
+  CSV/Excel içe aktarma (`docs/adim-4b-tasarim.md`): `ice_aktarma` saf çekirdek (okuma, eşleştirme, dönüştürücüler;
+  veritabanı yok), `ice_aktarma_yaz` tek işlemde yazma (UPSERT, paket zinciri, yenileme riski), `ice_aktar` komut.
 - `semalar/`: Pydantic istek/yanıt şemaları.
 - `models.py`: yalnızca sütunları yansıtır. Şemanın tek kaynağı SQL'dir.
 - `faz1_sema.sql`: okunabilir şema kaynağı. `alembic/sql/0001_faz1_sema.sql`: aynısı, BEGIN/COMMIT'siz.
 - `sentetik/`: BG/NBD tabanlı sentetik veri üreticisi. Yükleyici yalnızca adı `_demo` ile biten veritabanına yazar.
+  `disa_aktar`: işletmenin üye/paket/giriş verisini içe aktarma biçiminde üç CSV'ye yazar (K41 gidiş-dönüş; yalnızca _demo).
   `demo_tazele`: [DEMO] işletmelerin tarihlerini bugüne kaydırır (K11–K16, `docs/adim-9-tasarim.md`).
   `demo_kur`: demo veritabanını tek komutta, sabit tohumlar ve referans günü 2026-10-01 ile baştan kurar (K24).
 - `analitik/`: modeller (V1, BG/NBD, MBG/NBD, Gamma-Gamma, yenileme simülasyonu), açıklama (neden riskli); veritabanı bilmez.
@@ -61,7 +64,7 @@ main.py → rotalar/ → (bagimliliklar.py, servisler/, semalar/) → models.py 
 |---|---|---|
 | `panosu` | Canlı; yalnızca gerçek işletme verisi | Yalnızca salt-okunur sorgu. Her yazma işlemi açık onay ister. `alembic upgrade` asla çalıştırılmaz (yalnızca onaylı `stamp`). |
 | `panosu_test` | pytest | Silinip `alembic upgrade head` ile yeniden kurulabilir |
-| `panosu_demo` | Sentetik veri, demo, backtest | Kuruldu; 5 [DEMO] işletme, sentetik veri; [DEMO] Denge Pilates'te üyelik paketleri, yenileme riskleri ve 2026-03'ten itibaren her ay 330.000 TL demo gideri (Panosu'ya geçiş ayı) (paket dönemi ziyaret tutarları 0); [DEMO] Butik Reformer: Faz 0 demosu (p ~ Beta(1, 290), ayda 5 yeni üye; ~75 aktif üye, 18 ay paket/ziyaret geçmişi, her ay gider). Yükleyici yalnızca _demo adlarına yazar. Demo sunucusunun her açılışında ve her gece 03:00'te bugüne kaydırılır (K11). |
+| `panosu_demo` | Sentetik veri, demo, backtest | Kuruldu; 5 [DEMO] işletme (+ yalnızca yerelde [DEMO] Butik Kopya: Butik Reformer'ın içe aktarma kopyası, Adım 4b-1 elle denemesi, sahibi kopya@panosu.local, gider yok; demo_kur yeniden kurmaz), sentetik veri; [DEMO] Denge Pilates'te üyelik paketleri, yenileme riskleri ve 2026-03'ten itibaren her ay 330.000 TL demo gideri (Panosu'ya geçiş ayı) (paket dönemi ziyaret tutarları 0); [DEMO] Butik Reformer: Faz 0 demosu (p ~ Beta(1, 290), ayda 5 yeni üye; ~75 aktif üye, 18 ay paket/ziyaret geçmişi, her ay gider). Yükleyici yalnızca _demo adlarına yazar. Demo sunucusunun her açılışında ve her gece 03:00'te bugüne kaydırılır (K11). |
 | Neon `panosu_demo` (yayın) | Canlı demo | Yalnızca Render (panosu_app) ve GitHub Actions bağlanır; yerelden bağlanılmaz; kurulum demo-kur.yml, tazeleme demo-tazele.yml; adresler postgresql+psycopg2:// ile başlar |
 
 Sentetik veri ASLA `panosu`'ya yazılmaz.
@@ -95,6 +98,9 @@ uvicorn main:app --reload                        # geliştirme sunucusu, /docs
 .\.venv\Scripts\python.exe -m sentetik.demo_tazele --veritabani panosu_demo --kuru   # demo tazeleme raporu, yazmaz
 .\.venv\Scripts\python.exe -m sentetik.demo_tazele --veritabani panosu_demo          # [DEMO] verisini bugüne kaydır + riskleri yeniden hesapla
 .\.venv\Scripts\python.exe -m sentetik.demo_kur --veritabani <ad>_demo   # tüm [DEMO] verisini silip baştan kur (PANOSU_DEMO_PAROLA ortamda; --uygulama-parolasi-ayarla yalnızca yayında)
+.\.venv\Scripts\python.exe -m servisler.ice_aktar --veritabani <ad> --isletme <uuid> --kaynak <ad> --uyeler u.csv --paketler p.csv --girisler g.csv   # içe aktarma ÖNİZLEMESİ (yazmaz; önerilen eşleştirme raporlar/ice_aktarma_esleme.json); yalnızca _demo/_test
+.\.venv\Scripts\python.exe -m servisler.ice_aktar ... --esleme raporlar/ice_aktarma_esleme.json --onayla   # tek işlemde yaz + yenileme riski; --anonim: ad "Üye xxxxxx", telefon/e-posta okunmaz
+.\.venv\Scripts\python.exe -m sentetik.disa_aktar --veritabani <ad>_demo --isletme <uuid> --cikti raporlar/disa_aktarma/   # üye/paket/giriş CSV'leri (cp1254, ";")
 ```
 Test adresleri: `PANOSU_TEST_APP_URL` / `PANOSU_TEST_ADMIN_URL` ortamda tanımlıysa onlar kullanılır; değilse
 `tests/conftest.py`, `.env`'deki `PANOSU_VERITABANI_URL` / `PANOSU_MIGRASYON_URL`'den yalnızca veritabanı adını
@@ -119,7 +125,7 @@ gösterecek şekilde `alembic upgrade head`.
 | 5b | Sözleşmeli üyelik (paketler), yenileme riski (M3 + simülasyon), S6 backtest, panel ucu (`docs/adim-5b-tasarim.md`) | Tamam |
 | 5c | Yenileme modelinin gerçek yenileme verisiyle kalibrasyonu (Faz 0 verisi gelince). Test edilecek hipotezler (proje sahibinin gözlemi): (1) aktif üyelerin yenileme oranı ρ %90'ın üzerinde; (2) önceki yenileme sayısı yenilemenin güçlü habercisi; (3) az gelip yine de yenileyen bir grup var ve model onlara yanlış alarm veriyor olabilir. S6'da Riskteki Para'nın %13 düşük çıkmasının nedeni ρ = 1 varsayımıdır. | Bekliyor |
 | 7 | Panel: sessiz üyeler, gelir ve kâr özeti (giderler, başabaş), haftalık rapor (`docs/adim-7-tasarim.md`). Geçmiş ayda başabaş farkı ay ortalamasıyla (K2, `docs/adim-9-tasarim.md`) | Tamam |
-| 4b | CSV içe aktarma (gerçek Faz 0 verisi gelince; 8'e bağlı değil). Not: içe aktarmada giriş (check-in) ziyaretlerinin tutarı 0 olmalı; aksi hâlde paket geliri iki kez sayılır. | Bekliyor |
+| 4b | CSV/Excel içe aktarma (`docs/adim-4b-tasarim.md`; 8'e bağlı değil). Not: içe aktarmada giriş (check-in) ziyaretlerinin tutarı 0 olmalı; aksi hâlde paket geliri iki kez sayılır. | 4b-1 Tamam (CSV/Excel içe aktarma çekirdeği, komut, dışa aktarma, gidiş-dönüş testi); 4b-2 gerçek veriyle doğrulama ve 4b-3 web ekranı bekliyor |
 | 8 | Gerçek kimlik doğrulama + işletme kaydı: Argon2id + JWT, tek kullanımlık yenileme tokenı, davet kodları (`docs/adim-8-tasarim.md`). Canlı `panosu` migration'ı ayrı onay bekliyor. | Tamam |
 | 8a | Soğuk başlangıç modu (9'dan önce; yalnızca plan): geçmiş verisi az olan işletmede MBG/NBD parametreleri, diğer işletmelerden veya sentetik veriden öğrenilen önsel (prior) ile başlar ve işletmenin verisi geldikçe Bayesçi olarak güncellenir. Bu dönemde panelde tahminler 'ön tahmin' etiketiyle gösterilir. | Planlandı |
 | 8b | Otomatik hesaplama (9'dan önce; yalnızca plan): finans paneli her veri girişinde anında, yenileme riskleri her gece otomatik yeniden hesaplanır. (demo için gece tazeleme 9c'de yapıldı; gerçek işletmeler bekliyor) | Planlandı |
@@ -146,7 +152,9 @@ Geliştirme fikirleri (karar değil; ilgili adımda tasarlanacak):
 - Raporlar raporlar/ klasörüne kaydedilir; bu klasör git'e girmez.
 
 ## Açık konular
-- test_demo_tazele.py::test_denetim_kayitlari_degismez aralıklı düşüyor (7 çalıştırmada 2): analitik/bgnbd.py:90 MBG/NBD yakınsamadı. Olası neden a,b sırtı (a/(a+b) belirgin, a+b zayıf belirlenmiş); rastgele test verisinde optimizasyon sırt boyunca kalıyor. Karar proje sahibinde; aday: (μ, κ) yeniden parametreleme + log κ zayıf önsel. Demo verisi sabit tohumlu ve yakınsıyor.
+- test_demo_tazele.py::test_denetim_kayitlari_degismez aralıklı düşüyor (7 çalıştırmada 2): analitik/bgnbd.py log_mle'de MBG/NBD yakınsamadı. Olası neden a,b sırtı (a/(a+b) belirgin, a+b zayıf belirlenmiş); rastgele test verisinde optimizasyon sırt boyunca kalıyor. Karar proje sahibinde; aday: (μ, κ) yeniden parametreleme + log κ zayıf önsel. Demo verisi sabit tohumlu ve yakınsıyor.
+  Kanıt (Adım 4b-1, 2026-10-02): aynı veride üye sırası değiştirilerek 12 uydurmada a/(a+b) 0,009–0,011 sabit, a+b 29 ile 164.000 arası; r, α sınıra kaçıyor (r/α ≈ 0,148); bireysel p_hayatta farkı 0,031'e kadar. Fit girdisi artık kanonik sırada (`analitik.bgnbd.kanonik_sira`): kanonik sıra belirlenimcilik sağlar, tanımlanabilirliği çözmez. Kök çözüm ((μ, κ) + log κ zayıf önsel; r, α için benzeri) ayrı adımda; backtest sonuçları orada yeniden üretilecek (`docs/adim-4b-tasarim.md`).
+- Sentetik üretici (düşük öncelik): [DEMO] Butik Reformer'da 9 üyede saniyesine kadar aynı zamanlı 22 ziyaret çifti var (farklı dis_kimlik). Gerçekte çift okutma olurdu; içe aktarma bunları tek kayda indirir (K33). Düzeltmek demo sayılarını değiştirir; ayrı karar.
 
 ## Çalışma şekli
 - Her görevin sonunda rapor: değişen dosyalar, pytest özet satırı, talimattan her sapma.
