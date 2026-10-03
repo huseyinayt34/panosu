@@ -48,7 +48,7 @@ indeks (isletme_id, musteri_id, baslangic_tarihi DESC).
 | isletme_id | uuid NOT NULL | DEFAULT aktif_isletme() |
 | musteri_id, paket_id | uuid NOT NULL | bileşik FK'ler |
 | hesaplama_tarihi | date NOT NULL | |
-| model_versiyonu | text NOT NULL | ör. 'mbgnbd-sim-v1' |
+| model_versiyonu | text NOT NULL | ör. 'mbgnbd-sim-v1' (2026-10'dan itibaren 'mbgnbd-map-v2') |
 | kalan_gun | integer | süre bazlıda bitişe kalan gün |
 | kalan_giris | integer | giriş bazlıda kalan hak |
 | p_hayatta_simdi | numeric(5,4) | 0–1 |
@@ -89,7 +89,7 @@ Dosyalar: `semalar/paket.py`, `servisler/paket_servisi.py`, `rotalar/paketler.py
 ### Tanım
 Üye, paketi bittiği anda hâlâ "hayatta" (MBG/NBD anlamında aktif) ise yeniler kabul edilir:
 P(yenileme) = P(paket bittiğinde hayatta). Bu, gerçek yenileme verisiyle kalibre edilmemiş davranışsal bir
-ilk sürümdür (model_versiyonu 'mbgnbd-sim-v1').
+ilk sürümdür (model_versiyonu 'mbgnbd-sim-v1'; 2026-10'dan itibaren 'mbgnbd-map-v2').
 
 ### Hesaplama (sonsal simülasyon)
 İşletmenin tüm üyelerinin ziyaret geçmişiyle M3 (MBG/NBD) parametreleri (r, α, a, b) tahmin edilir.

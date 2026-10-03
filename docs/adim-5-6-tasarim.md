@@ -29,9 +29,9 @@ müşterilerin ortanca μ ve σ'sı kullanılır (V1'de "yetersiz veri" diye bı
 - Her ziyaretten sonra bırakma olasılığı p; p ~ Beta(a, b).
 - Müşteri başına veri: x (tekrar ziyaret sayısı), t_x (son ziyaretin ilk ziyarete göre zamanı), T (gözlem süresi).
   Zaman birimi: gün.
-- Parametreler (r, α, a, b) en çok olabilirlik (MLE) ile tahmin edilir: log-olabilirlik makaledeki kapalı form;
-  optimizasyon scipy.optimize.minimize, log-parametrelerde (pozitiflik için), L-BFGS-B, gammaln/betaln ile
-  sayısal kararlılık.
+- Parametreler (r, α, a, b) en çok olabilirlik (MLE) ile tahmin edilir (2026-10: MAP, bkz. docs/adim-mu-kappa-tasarim.md):
+  log-olabilirlik makaledeki kapalı form; optimizasyon scipy.optimize.minimize, log-parametrelerde (pozitiflik için),
+  L-BFGS-B, gammaln/betaln ile sayısal kararlılık.
 - P(hayatta | x, t_x, T) = 1 / [1 + 1{x>0} · a/(b+x−1) · ((α+T)/(α+t_x))^(r+x)]
 - Hayattaysa beklenen günlük oran (sonsal ortalama): (r+x)/(α+T).
 
@@ -52,7 +52,8 @@ sınıflandı. Hedef sektörde (güzellik salonları) ilk ziyaret sonrası kayı
   Bireysel olabilirlik (1−p)^(x+1)·λ^x·e^(−λT) + p(1−p)^x·λ^x·e^(−λt_x)'den (λ, p) üzerinden integralle türetilerek doğrulandı.
 - Beklenen ziyaret: hayattaysa sonsal p ~ Beta(a, b+x+1) olduğundan BG/NBD ifadesinin b → b+1 hâli:
   (a+b+x)/(a−1) · [1 − ((α+T)/(α+T+t))^(r+x) · ₂F₁(r+x, b+x+1; a+b+x; t/(α+T+t))] · P(hayatta).
-- MLE BG/NBD ile aynı yapı (log-parametre, L-BFGS-B, `bgnbd.log_mle` plato yedeği). Kod: `analitik/mbgnbd.py`.
+- MLE (2026-10: MAP, bkz. docs/adim-mu-kappa-tasarim.md) BG/NBD ile aynı yapı (log-parametre, L-BFGS-B,
+  `bgnbd.log_mle` plato yedeği). Kod: `analitik/mbgnbd.py`.
 - Testler: x = 0'da P(hayatta) < 1; BG/NBD'deki monotonluk özellikleri; log-olabilirlik bağımsız hesapla; beklenen
   ziyaret doğrudan sayısal integralle; S0'da (5 000 müşteri) r ve α'nın geri kazanımı, eşik %15. a/(a+b) sınanmaz:
   S0 BG/NBD ile üretildiğinden M3 orada yanlış belirlenmiştir ve a/(a+b)'yi sistematik olarak ~%24 düşük tahmin eder.
@@ -96,7 +97,7 @@ analitik/
   __init__.py
   v1.py              # M0 (MusteriAnalizi.py'den taşınır; eski dosya bu fonksiyonları içe aktaran ince bir kabuk olur)
   bgnbd.py           # M1: log-olabilirlik, fit, p_hayatta, beklenen_ziyaret, sonsal oran
-  mbgnbd.py          # M3: MBG/NBD (bgnbd'nin parametre yapısı ve MLE'sini kullanır)
+  mbgnbd.py          # M3: MBG/NBD (bgnbd'nin parametre yapısı ve MLE'sini kullanır) (2026-10: MAP, bkz. docs/adim-mu-kappa-tasarim.md)
   gamma_gamma.py     # M2: log-olabilirlik, fit, beklenen_sepet, bagimsizlik_tanisi
   ozellikler.py      # ziyaret listesinden (x, t_x, T, m̄) çıkarımı
   riskteki_para.py   # tanımdaki formül

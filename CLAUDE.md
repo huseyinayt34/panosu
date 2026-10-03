@@ -132,6 +132,7 @@ gösterecek şekilde `alembic upgrade head`.
 | 9 | Web paneli (Jinja + HTMX, FastAPI içinde; `docs/adim-9-tasarim.md`), panosu_demo ile canlı demo | Tamam |
 | 10 | İzin, mesaj, geri kazanım ölçümü | Planlandı |
 | 11 | Yayına alma: Docker, CI, sunucu, güçlü ve farklı parolalar, ödeme (`docs/adim-11-tasarim.md`) | Tamam (minimum yayın 2026-10-02: https://panosu.onrender.com; ödeme sonraya) |
+| — | Model düzeltmesi (μ, κ): MAP, zayıf önsel, merkezi fark, iki başlangıç (`docs/adim-mu-kappa-tasarim.md`) | Tamam |
 
 Geliştirme fikirleri (karar değil; ilgili adımda tasarlanacak):
 - Adım 4b: yapay zekâ ile CSV sütun eşleme önerisi; yoklama defteri fotoğrafından tablo çıkarma.
@@ -152,8 +153,13 @@ Geliştirme fikirleri (karar değil; ilgili adımda tasarlanacak):
 - Raporlar raporlar/ klasörüne kaydedilir; bu klasör git'e girmez.
 
 ## Açık konular
-- test_demo_tazele.py::test_denetim_kayitlari_degismez aralıklı düşüyor (7 çalıştırmada 2): analitik/bgnbd.py log_mle'de MBG/NBD yakınsamadı. Olası neden a,b sırtı (a/(a+b) belirgin, a+b zayıf belirlenmiş); rastgele test verisinde optimizasyon sırt boyunca kalıyor. Karar proje sahibinde; aday: (μ, κ) yeniden parametreleme + log κ zayıf önsel. Demo verisi sabit tohumlu ve yakınsıyor.
-  Kanıt (Adım 4b-1, 2026-10-02): aynı veride üye sırası değiştirilerek 12 uydurmada a/(a+b) 0,009–0,011 sabit, a+b 29 ile 164.000 arası; r, α sınıra kaçıyor (r/α ≈ 0,148); bireysel p_hayatta farkı 0,031'e kadar. Fit girdisi artık kanonik sırada (`analitik.bgnbd.kanonik_sira`): kanonik sıra belirlenimcilik sağlar, tanımlanabilirliği çözmez. Kök çözüm ((μ, κ) + log κ zayıf önsel; r, α için benzeri) ayrı adımda; backtest sonuçları orada yeniden üretilecek (`docs/adim-4b-tasarim.md`).
+- Kapandı (2026-10-03): test_demo_tazele.py::test_denetim_kayitlari_degismez'in aralıklı düşmesinin kökü a,b sırtıydı; (μ, κ) yeniden parametreleme + zayıf önsel (MAP) ile giderildi, 20/20 geçiyor, backtest yeniden üretildi (`docs/adim-mu-kappa-tasarim.md`).
+- Model düzeltmesi (μ, κ) sonrası kapsam dışı kalanlar (`docs/adim-mu-kappa-tasarim.md` Bölüm 4):
+  - Önsel merkezlerinin (`analitik.bgnbd` ONSEL_* sabitleri) gerçek veride ayarı: 4b-2'de zaman bölmeli testle.
+  - Asgari veri koruması: herkes tek ziyaretli veya 1 günlük geçmişte model emin ama anlamsız cevap veriyor; eski kodda da böyle. Eşikler proje sahibinin kararı.
+  - Gamma-Gamma'da benzer sırt (q → ∞); yalnızca backtest'te kullanılıyor.
+  - Sentetik üretici: Butik Reformer'da üyelerin %2'si günde birden fazla ziyaret yapıyor (6,2/güne kadar).
+  - Tam Bayes / Rao-Blackwell (parametre belirsizliğini yenileme simülasyonuna taşımak).
 - Sentetik üretici (düşük öncelik): [DEMO] Butik Reformer'da 9 üyede saniyesine kadar aynı zamanlı 22 ziyaret çifti var (farklı dis_kimlik). Gerçekte çift okutma olurdu; içe aktarma bunları tek kayda indirir (K33). Düzeltmek demo sayılarını değiştirir; ayrı karar.
 
 ## Çalışma şekli

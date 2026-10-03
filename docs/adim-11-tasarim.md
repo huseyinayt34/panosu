@@ -141,3 +141,4 @@ Canlı adres: https://panosu.onrender.com (2026-10-02'de yayına alındı)
 - Not: Riskteki Para (Butik Reformer, 45 gün) canlıda 22.379,85 TL, yerel karşılaştırmada 22.380,70 TL (fark 0,85 TL).
   Muhtemel neden (doğrulanmadı): Windows ile Linux numpy/scipy derlemeleri arasındaki kayan nokta farkı ve MBG/NBD'de
   a+b'nin zayıf belirlenmesi (sırt). Matematik raporu ve (mu, kappa) yeniden parametreleme kararı ile birlikte ele alınacak.
+  (μ, κ) adımıyla kök neden giderildi; bkz. docs/adim-mu-kappa-tasarim.md K52.

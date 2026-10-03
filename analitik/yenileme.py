@@ -1,4 +1,6 @@
-"""Yenileme modeli (Adım 5b, model_versiyonu 'mbgnbd-sim-v1'). Tasarım: docs/adim-5b-tasarim.md, Bölüm 3.
+"""Yenileme modeli (Adım 5b, model_versiyonu 'mbgnbd-map-v2'). Tasarım: docs/adim-5b-tasarim.md, Bölüm 3.
+'mbgnbd-map-v2' (2026-10): simülasyon 'mbgnbd-sim-v1' ile aynıdır; M3 parametreleri MLE yerine MAP ile kestirilir
+(θ = (ln m, ln r, logit μ, ln κ), zayıf önsel, iki başlangıç; analitik.bgnbd, docs/adim-mu-kappa-tasarim.md).
 
 Tanım: üye, paketi bittiği anda hâlâ "hayatta" (MBG/NBD anlamında aktif) ise yeniler:
     P(yenileme) = P(paket bittiğinde hayatta)
@@ -32,7 +34,7 @@ from scipy.stats import poisson
 from analitik import mbgnbd
 from analitik.bgnbd import BGNBDParametreleri
 
-MODEL_VERSIYONU = "mbgnbd-sim-v1"
+MODEL_VERSIYONU = "mbgnbd-map-v2"
 SIMULASYON_SAYISI = 2_000
 
 

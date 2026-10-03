@@ -1,4 +1,4 @@
-"""analitik.yenileme (mbgnbd-sim-v1) ve stüdyo Riskteki Parası."""
+"""analitik.yenileme (mbgnbd-map-v2) ve stüdyo Riskteki Parası."""
 
 import uuid
 from datetime import date

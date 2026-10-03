@@ -74,7 +74,7 @@ Docker imajı **Render**'da (Frankfurt) çalışır; veritabanı **Neon** Postgr
 
 Ayrıntılı türetmeler ve varsayımlar ayrı bir **matematik raporunda** anlatılacak (hazırlanıyor). Kısa özet:
 
-**MBG/NBD (Batislam, Denizel & Filiztekin, 2007).** Hayattaki bir müşteri ziyaretlerini Poisson($\lambda$) süreciyle yapar; ilk ziyaret dahil her ziyaretten sonra $p$ olasılıkla bırakır. Müşteriler arası farklılık $\lambda \sim \text{Gamma}(r, \alpha)$ ve $p \sim \text{Beta}(a, b)$ ile modellenir; parametreler her işletmenin kendi verisinden en çok olabilirlik (MLE) ile kestirilir. $x$ tekrar ziyaret sayısı, $t_x$ son ziyaretin zamanı, $T$ gözlem süresi olmak üzere:
+**MBG/NBD (Batislam, Denizel & Filiztekin, 2007).** Hayattaki bir müşteri ziyaretlerini Poisson($\lambda$) süreciyle yapar; ilk ziyaret dahil her ziyaretten sonra $p$ olasılıkla bırakır. Müşteriler arası farklılık $\lambda \sim \text{Gamma}(r, \alpha)$ ve $p \sim \text{Beta}(a, b)$ ile modellenir; parametreler her işletmenin kendi verisinden en büyük sonsal (MAP) ile kestirilir: zayıf tanımlanan iki yön ($\kappa = a+b$ ve $r$) zayıf log-normal önselle sabitlenir; ayrıntı `docs/adim-mu-kappa-tasarim.md`. $x$ tekrar ziyaret sayısı, $t_x$ son ziyaretin zamanı, $T$ gözlem süresi olmak üzere:
 
 $$P(\text{hayatta} \mid x, t_x, T) = \left[1 + \frac{a}{b + x}\left(\frac{\alpha + T}{\alpha + t_x}\right)^{r + x}\right]^{-1}$$
 

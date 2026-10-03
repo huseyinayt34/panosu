@@ -9,13 +9,17 @@ ziyaretli (x = 0) müşterinin P(hayatta) değeri 1'den küçüktür.
 Bireysel olabilirlik: (1−p)^(x+1)·λ^x·e^(−λT) + p·(1−p)^x·λ^x·e^(−λ·t_x). (λ, p) üzerinden integral:
     L = Γ(r+x)·α^r/Γ(r) · B(a, b+x+1)/B(a,b) · (α+T)^−(r+x) · [1 + a/(b+x) · ((α+T)/(α+t_x))^(r+x)]
     P(hayatta | x, t_x, T) = 1 / [1 + a/(b+x) · ((α+T)/(α+t_x))^(r+x)]
-Parametre yapısı ve MLE BG/NBD ile ortaktır (BGNBDParametreleri, bgnbd.log_mle). Zaman birimi: gün.
+Parametre yapısı ve MAP uyumu BG/NBD ile ortaktır (BGNBDParametreleri; θ dönüşümü, zayıf önsel ve iki başlangıç
+analitik.bgnbd'de, K42–K48). Zaman birimi: gün.
 """
 
 import numpy as np
 from scipy.special import betaln, gammaln
 
-from analitik.bgnbd import BGNBDParametreleri, _diziler, hayattaysa_beklenen_ziyaret, kanonik_sira, log_mle
+from analitik.bgnbd import (
+    BGNBDParametreleri, _diziler, hayattaysa_beklenen_ziyaret, kanonik_sira, log_onsel, map_iki_baslangic,
+    parametreden_teta, tetadan_parametre,
+)
 
 
 def _log_oran_terimi(prm: BGNBDParametreleri, x, t_x, T) -> np.ndarray:
@@ -37,20 +41,23 @@ def log_olabilirlik(prm: BGNBDParametreleri, x, t_x, T) -> float:
 
 
 def fit(x, t_x, T, baslangic: BGNBDParametreleri | None = None) -> BGNBDParametreleri:
-    """(r, α, a, b) MLE; bgnbd.fit ile aynı yapı (log-parametre, L-BFGS-B, plato yedeği).
+    """(r, α, a, b) MAP; bgnbd.fit ile aynı yapı (θ = (ln m, ln r, logit μ, ln κ), zayıf önsel, merkezi fark türevli
+    L-BFGS-B, iki başlangıç, plato yedeği).
 
     Girdi önce kanonik sıraya (x, t_x, T) dizilir: aynı veri hangi sırayla gelirse gelsin parametre bit bit aynıdır.
     """
     x, t_x, T = kanonik_sira(*_diziler(x, t_x, T))
+    n = len(x)
+    if n == 0:
+        raise ValueError("MBG/NBD uyumu için en az bir müşteri gerekli")
     if baslangic is None:
         baslangic = BGNBDParametreleri(r=1.0, alfa=max(float(np.mean(T)), 1.0), a=1.0, b=1.0)
-    n = len(x)
 
-    def amac(log_prm):
-        deger = -log_olabilirlik(BGNBDParametreleri(*np.exp(log_prm)), x, t_x, T) / n
+    def amac(teta):
+        deger = -(log_olabilirlik(tetadan_parametre(teta), x, t_x, T) + log_onsel(teta)) / n
         return deger if np.isfinite(deger) else 1e300
 
-    return BGNBDParametreleri(*np.exp(log_mle(amac, np.log(baslangic.dizi()), [(-10.0, 12.0)] * 4, n, "MBG/NBD")))
+    return tetadan_parametre(map_iki_baslangic(amac, parametreden_teta(baslangic), x, n, "MBG/NBD"))
 
 
 def p_hayatta(prm: BGNBDParametreleri, x, t_x, T) -> np.ndarray:

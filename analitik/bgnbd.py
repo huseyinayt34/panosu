@@ -8,19 +8,36 @@ Müşteri başına veri (analitik.ozellikler): x, t_x, T. Zaman birimi: gün.
 Log-olabilirlik (makale, denklem 6), A1 = lnΓ(r+x) − lnΓ(r) + r·ln α:
     ln L = A1 + ln[ B(a, b+x)/B(a,b) · (α+T)^−(r+x)
                     + 1{x>0} · B(a+1, b+x−1)/B(a,b) · (α+t_x)^−(r+x) ]
-Parametreler log-uzayda L-BFGS-B ile MLE.
+
+Uyum en büyük sonsal (MAP) ile yapılır (K42–K48, docs/adim-mu-kappa-tasarim.md). Optimizasyon uzayı
+θ = (ln m, ln r, logit μ, ln κ); m = r/α (ortalama günlük ziyaret oranı), μ = a/(a+b) (ortalama bırakma olasılığı),
+κ = a+b. Veri κ'yı ve küçük veride r'yi zayıf belirler (düz sırt); bu iki yöne zayıf log-normal önsel konur:
+ln κ ~ Normal(ln 10, 2²), ln r ~ Normal(ln 30, 2²); m ve μ önselsizdir. L-BFGS-B türevi merkezi farkla alır.
+İki başlangıçtan çözülür (varsayılan ve "tek seferlik payı" başlangıcı), amacı küçük olan seçilir.
 """
 
+import math
+import warnings
 from dataclasses import dataclass
 
 import numpy as np
 from scipy.integrate import quad
 from scipy.optimize import minimize
-from scipy.special import betaln, gammaln, hyp2f1
+from scipy.special import betaln, expit, gammaln, hyp2f1
 
 # Yakınsama bildirilmese de, türevsiz cila toplam log-olabilirliği bundan az iyileştiriyorsa nokta kabul edilir
 # (plato: ör. a, b → ∞ sınır çözümü; olabilirlik o yönde istatistiksel olarak anlamsız ölçüde değişir).
 PLATO_LL_TOLERANS = 1e-2
+
+# Zayıf önseller (K44); log_onsel bunları çağrı anında okur. SAPMA = math.inf: o yönde önsel yok.
+ONSEL_LN_KAPPA_MERKEZ = math.log(10)   # ln κ önselinin merkezi: κ = a+b ≈ 10
+ONSEL_LN_KAPPA_SAPMA = 2.0             # ln κ önselinin standart sapması (±2 sapma: κ ≈ 0,18–550)
+ONSEL_LN_R_MERKEZ = math.log(30)       # ln r önselinin merkezi: r ≈ 30
+ONSEL_LN_R_SAPMA = 2.0                 # ln r önselinin standart sapması (±2 sapma: r ≈ 0,55–1 640)
+# BG/NBD ve MBG/NBD MAP'inde L-BFGS-B ayarları (K46): merkezi fark türevi, sıkı göreli amaç toleransı.
+MAP_SECENEKLERI = {"jac": "3-point", "options": {"ftol": 1e-12}}
+# θ = (ln m, ln r, logit μ, ln κ) sınırları (K48), bu sırayla.
+TETA_SINIRLARI = [(-15.0, 10.0), (-10.0, 15.0), (-20.0, 20.0), (-10.0, 15.0)]
 
 
 @dataclass(frozen=True)
@@ -69,34 +86,75 @@ def log_olabilirlik(prm: BGNBDParametreleri, x, t_x, T) -> float:
     return float(log_olabilirlik_bireysel(prm, x, t_x, T).sum())
 
 
+def tetadan_parametre(teta) -> BGNBDParametreleri:
+    """θ = (ln m, ln r, logit μ, ln κ) → (r, α, a, b).
+
+    r = e^(ln r), α = r/m, a = κ·expit(logit μ), b = κ·expit(−logit μ).
+    """
+    ln_m, ln_r, logit_mu, ln_kappa = (float(d) for d in teta)
+    r, kappa = float(np.exp(ln_r)), float(np.exp(ln_kappa))
+    return BGNBDParametreleri(r=r, alfa=r / float(np.exp(ln_m)), a=kappa * float(expit(logit_mu)),
+                              b=kappa * float(expit(-logit_mu)))
+
+
+def parametreden_teta(prm: BGNBDParametreleri) -> np.ndarray:
+    """(r, α, a, b) → θ: ln m = ln r − ln α, ln r, logit μ = ln a − ln b, ln κ = ln(a+b)."""
+    return np.array([np.log(prm.r) - np.log(prm.alfa), np.log(prm.r), np.log(prm.a) - np.log(prm.b),
+                     np.log(prm.a + prm.b)])
+
+
+def log_onsel(teta) -> float:
+    """Zayıf önselin log yoğunluğu (sabit hariç; K44, K45): yalnız ln κ = θ[3] ve ln r = θ[1]; m ve μ önselsiz."""
+    return float(-0.5 * ((teta[3] - ONSEL_LN_KAPPA_MERKEZ) / ONSEL_LN_KAPPA_SAPMA) ** 2
+                 - 0.5 * ((teta[1] - ONSEL_LN_R_MERKEZ) / ONSEL_LN_R_SAPMA) ** 2)
+
+
 def fit(x, t_x, T, baslangic: BGNBDParametreleri | None = None) -> BGNBDParametreleri:
-    """(r, α, a, b) MLE. Optimizasyon log-parametrelerde (pozitiflik), L-BFGS-B.
+    """(r, α, a, b) MAP: θ uzayında −(log-olabilirlik + log_onsel(θ)) / n en küçüklenir (K45), iki başlangıçtan (K47).
 
     Girdi önce kanonik sıraya (x, t_x, T) dizilir: aynı veri hangi sırayla gelirse gelsin parametre bit bit aynıdır.
     """
     x, t_x, T = kanonik_sira(*_diziler(x, t_x, T))
+    n = len(x)
+    if n == 0:
+        raise ValueError("BG/NBD uyumu için en az bir müşteri gerekli")
     if baslangic is None:
         baslangic = BGNBDParametreleri(r=1.0, alfa=max(float(np.mean(T)), 1.0), a=1.0, b=1.0)
-    n = len(x)
 
-    def amac(log_prm):
-        prm = BGNBDParametreleri(*np.exp(log_prm))
-        deger = -log_olabilirlik(prm, x, t_x, T) / n
+    def amac(teta):
+        deger = -(log_olabilirlik(tetadan_parametre(teta), x, t_x, T) + log_onsel(teta)) / n
         return deger if np.isfinite(deger) else 1e300
 
-    return BGNBDParametreleri(*np.exp(log_mle(amac, np.log(baslangic.dizi()), [(-10.0, 12.0)] * 4, n, "BG/NBD")))
+    return tetadan_parametre(map_iki_baslangic(amac, parametreden_teta(baslangic), x, n, "BG/NBD"))
 
 
-def log_mle(amac, baslangic: np.ndarray, sinirlar: list, n: int, ad: str) -> np.ndarray:
-    """amac (müşteri başına ortalama negatif log-olabilirlik) log-parametrelerde L-BFGS-B ile en küçüklenir.
+def map_iki_baslangic(amac, baslangic_teta: np.ndarray, x: np.ndarray, n: int, ad: str) -> np.ndarray:
+    """θ'da iki başlangıçtan MAP (K47); amacı küçük olan çözüm döner.
 
-    Olabilirlik bir yönde düzleşirse çizgi araması "ABNORMAL" ile durabilir; o zaman aynı sınırlar içinde
-    Nelder-Mead ile cilalanır. Cila da yakınsamazsa, toplam log-olabilirlik PLATO_LL_TOLERANS'tan az
+    B1 verilen başlangıçtır. B2, B1 çözümünün (ln m, ln r)'sini alır; μ'yü tek seferlik payına (x = 0 oranı,
+    [0.02, 0.98]'e kırpılmış), ln κ'yı −2'ye koyar: p'nin müşteriler arasında çok dağınık olduğu (bir kısmı hemen
+    bırakan) çözüm, B1'den bir sırtla ayrılmış olabilir.
+    """
+    t1 = log_mle(amac, baslangic_teta, TETA_SINIRLARI, n, ad, MAP_SECENEKLERI)
+    pay = min(max(float(np.mean(x == 0)), 0.02), 0.98)
+    b2 = np.array([t1[0], t1[1], math.log(pay / (1 - pay)), -2.0])
+    t2 = log_mle(amac, b2, TETA_SINIRLARI, n, ad, MAP_SECENEKLERI)
+    return t2 if amac(t2) < amac(t1) else t1
+
+
+def log_mle(amac, baslangic: np.ndarray, sinirlar: list, n: int, ad: str, secenekler: dict | None = None) -> np.ndarray:
+    """amac (müşteri başına ortalama negatif log-olabilirlik ya da log-sonsal) L-BFGS-B ile en küçüklenir.
+
+    secenekler L-BFGS-B'ye anahtar sözcük olarak geçer (ör. MAP_SECENEKLERI); verilmezse scipy varsayılanları.
+    Olabilirlik bir yönde düzleşirse çizgi araması "ABNORMAL" ile durabilir; o zaman RuntimeWarning verilir ve aynı
+    sınırlar içinde Nelder-Mead ile cilalanır. Cila da yakınsamazsa, toplam log-olabilirlik PLATO_LL_TOLERANS'tan az
     iyileştiyse nokta kabul edilir; değilse hata.
     """
-    sonuc = minimize(amac, baslangic, method="L-BFGS-B", bounds=sinirlar)
+    sonuc = minimize(amac, baslangic, method="L-BFGS-B", bounds=sinirlar, **(secenekler or {}))
     if sonuc.success:
         return sonuc.x
+    warnings.warn(f"{ad}: L-BFGS-B yakınsamadı ({sonuc.message}); Nelder-Mead yedeğiyle cilalanıyor",
+                  RuntimeWarning, stacklevel=2)
     cila = minimize(amac, sonuc.x, method="Nelder-Mead", bounds=sinirlar,
                     options={"xatol": 1e-8, "fatol": 1e-12, "maxiter": 20_000})
     if cila.success or (sonuc.fun - cila.fun) * n < PLATO_LL_TOLERANS:
