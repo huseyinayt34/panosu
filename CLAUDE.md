@@ -1,169 +1,117 @@
-# Panosu: Müşteri Davranış Panosu (çok kiracılı SaaS)
+# Panosu: customer behavior panel (multi-tenant SaaS)
 
-Küçük işletmeler (berber, kuaför, kafe, spor salonu) için geri kazanma motoru: her müşterinin churn
-riskini ve **Riskteki Para**'yı (kaybedilmek üzere olan ciro) hesaplar, işletmeye "şu kişilere yaz"
-listesi verir, mesajdan sonra geri kazanılan ciroyu ölçer. Stok/muhasebe/adisyon (ERP) kapsam dışı.
+Win-back engine for small businesses (studios, barbers, hair salons, cafes, gyms): per-customer churn risk and
+**Riskteki Para** (revenue at risk), a "contact these people" list, and measured recovered revenue.
+ERP (stock, accounting, POS) is out of scope.
 
-Rol dağılımı: mimari, ürün mantığı ve matematik kararları proje sahibinindir (Hüseyin). Ajan kodu
-yazar. Tasarım kararı gerektiren bir belirsizlikte tahminle ilerleme; sor.
+Roles: the owner (Hüseyin) decides architecture, product logic and math. The agent writes code.
+On a design ambiguity, do not guess: ask.
 
-## Teknoloji
-Python 3.14, FastAPI, SQLAlchemy 2.0 (Mapped/mapped_column), Pydantic v2, PostgreSQL 15+, Alembic,
-pytest. Windows + PowerShell. Sanal ortam: `.venv`.
+## Language and token rules
+- Chat with the owner: Turkish. Everything written to the repo is English: this file, new docs (`.md` only),
+  commit messages, new code comments.
+- Code identifiers keep the existing Turkish domain names (isletme, uye, paket, ...) because they mirror the SQL
+  schema. Never rename existing identifiers, files or columns. Existing Turkish docs are not translated.
+- Keep this file short (max 150 lines); detail lives in docs/. Read only what the task needs.
+- When the conversation gets long, remind the owner to run `/compact`. If an approach turns out wrong, suggest
+  `/rewind` instead of stacking fixes on top.
 
-## Dosya yapısı ve bağımlılık yönü
+## Stack
+Python 3.14, FastAPI, SQLAlchemy 2.0 (Mapped/mapped_column), Pydantic v2, PostgreSQL 15+, Alembic, pytest.
+Windows + PowerShell. Virtualenv: `.venv`.
+
+## Layout and dependency direction
 ```
 main.py → rotalar/ → (bagimliliklar.py, servisler/, semalar/) → models.py → database.py → config.py
 ```
-- `rotalar/`: HTTP katmanı. Servis istisnalarını HTTP kodlarına çevirir. `rotalar/web.py`: web paneli HTML uçları
-  (çerezli oturum, CSRF; `docs/adim-9-tasarim.md`). `rotalar/ara_katman.py`: salt okunur demo (K25) ve üretim
-  güvenlik başlıkları (K27, `docs/adim-11-tasarim.md`).
-- `servisler/`: iş kuralları. FastAPI import ETMEZ, HTTPException fırlatmaz.
-  CSV/Excel içe aktarma (`docs/adim-4b-tasarim.md`): `ice_aktarma` saf çekirdek (okuma, eşleştirme, dönüştürücüler;
-  veritabanı yok), `ice_aktarma_yaz` tek işlemde yazma (UPSERT, paket zinciri, yenileme riski), `ice_aktar` komut.
-- `semalar/`: Pydantic istek/yanıt şemaları.
-- `models.py`: yalnızca sütunları yansıtır. Şemanın tek kaynağı SQL'dir.
-- `faz1_sema.sql`: okunabilir şema kaynağı. `alembic/sql/0001_faz1_sema.sql`: aynısı, BEGIN/COMMIT'siz.
-- `sentetik/`: BG/NBD tabanlı sentetik veri üreticisi. Yükleyici yalnızca adı `_demo` ile biten veritabanına yazar.
-  `disa_aktar`: işletmenin üye/paket/giriş verisini içe aktarma biçiminde üç CSV'ye yazar (K41 gidiş-dönüş; yalnızca _demo).
-  `demo_tazele`: [DEMO] işletmelerin tarihlerini bugüne kaydırır (K11–K16, `docs/adim-9-tasarim.md`).
-  `demo_kur`: demo veritabanını tek komutta, sabit tohumlar ve referans günü 2026-10-01 ile baştan kurar (K24).
-- `analitik/`: modeller (V1, BG/NBD, MBG/NBD, Gamma-Gamma, yenileme simülasyonu), açıklama (neden riskli); veritabanı bilmez.
-- `backtest/`: sentetik senaryolarda model karşılaştırması (S0–S6); veritabanı yok.
-- `sablonlar/`: Jinja2 HTML şablonları (haftalık rapor). `sablonlar/web/`: web paneli şablonları.
-- `statik/`: web paneli statik dosyaları (htmx.min.js 2.0.4, panel.css); `/statik` altında sunulur.
-- `Dockerfile`, `.dockerignore`: yayın imajı (python:3.14-slim, root olmayan kullanıcı; imajı Render derler, K28).
-- `requirements-uretim.txt`: çalışma anı bağımlılıkları (`requirements.txt` sürümleriyle); yeni çalışma anı
-  import'unda güncellenir.
-- `.github/workflows/`: `demo-tazele.yml` (yayındaki demonun gece tazelemesi, K23) ve `demo-kur.yml` (elle, onay
-  kelimesi "KUR" ile baştan kurulum, K24).
+- `rotalar/`: HTTP layer, maps service exceptions to HTTP codes. `web.py` panel (cookie session, CSRF),
+  `ara_katman.py` read-only demo (K25) and security headers (K27).
+- `servisler/`: business rules; never imports FastAPI or raises HTTPException.
+- `semalar/`: Pydantic schemas. `models.py` mirrors columns only; SQL is the single schema source
+  (`faz1_sema.sql` = readable copy of `alembic/sql/0001_faz1_sema.sql`).
+- `analitik/`: models (V1, BG/NBD, MBG/NBD, Gamma-Gamma, renewal simulation) and "why risky"; no database.
+- `backtest/`: model comparison on synthetic scenarios S0-S6; no database.
+- `sentetik/`: synthetic data, demo setup, refresh and export; writes only to databases ending in `_demo`.
+- `sablonlar/` (Jinja2), `statik/` (htmx, `panel.css`; keep `panel.css`: the uptime monitor and the Render health
+  check request it).
+- `Dockerfile`, `requirements-uretim.txt` (runtime deps; update on a new runtime import),
+  `.github/workflows/` (`demo-tazele.yml` nightly, `demo-kur.yml` manual with confirm word "KUR").
+Module detail: `docs/commands.md` and the step docs `docs/adim-*.md`.
 
-## Değiştirilemez kurallar
-1. `create_all` / `drop_all` / `reflect` kullanılmaz. `alembic/` dışında DDL yazılmaz.
-   `tests/test_guvenlik_bekcisi.py` bunu denetler.
-2. `faz1_sema.sql`, `alembic/sql/*`, `tests/test_guvenlik_bekcisi.py`, `tests/test_izolasyon_db.py`
-   değiştirilmez.
-3. Kiracı izolasyonu PostgreSQL RLS ile sağlanır. `isletme_id` asla istemciden alınmaz; sorgulara elle
-   `isletme_id` filtresi eklenmez. `database.py`'deki `after_begin` olayı her işlemde
-   `app.isletme_id` / `app.kullanici_id` bağlamını ayarlar; bu mekanizma bozulmaz. `isletme_id` yalnızca imzalı
-   erişim tokenından okunur; işletme seçme ucunda istemcinin önerdiği değer üyelik doğrulanmadan kullanılmaz.
-4. Uygulama `panosu_app` rolüyle bağlanır (RLS'ye tabi, DDL yetkisi yok). Migration'lar
-   `PANOSU_MIGRASYON_URL` (DDL yetkili rol) ile çalışır. Autogenerate kullanılmaz; migration'lar elle yazılır.
-5. Para hesapları yalnızca `Decimal` ile yapılır, float kullanılmaz.
-6. Test silme, zayıflatma, `skip`/`xfail` yok. Güvenlik/izolasyon testi kırmızıysa düzeltmeye çalışma:
-   dur ve raporla.
-7. Parolalar hiçbir çıktıda, raporda veya commit'te görünmez. `.env` asla commit'lenmez. `PANOSU_JWT_GIZLI` ve demo
-   parolası hiçbir çıktıda görünmez. İstisna (K26): yayındaki demo parolası (PANOSU_DEMO_GIRIS_PAROLA) kamuya açıktır
-   ve yerel parolalardan farklıdır; yine de kodda, testte (sabit değer olarak), çıktıda ve commit'te yer almaz.
-8. Yeni paket eklemek onay gerektirir.
-9. Push (GitHub) yalnızca açık onayla yapılır.
-10. Talimatta olmayan yeniden düzenleme (refactor) veya yeni dosya/klasör önce sorulur.
+## Non-negotiable rules
+1. No `create_all` / `drop_all` / `reflect`. No DDL outside `alembic/`. Guarded by `tests/test_guvenlik_bekcisi.py`.
+2. Never modify `faz1_sema.sql`, `alembic/sql/*`, `tests/test_guvenlik_bekcisi.py`, `tests/test_izolasyon_db.py`.
+3. Tenant isolation is PostgreSQL RLS. `isletme_id` never comes from the client; never add manual `isletme_id`
+   filters. The `after_begin` event in `database.py` sets `app.isletme_id` / `app.kullanici_id` per transaction;
+   do not break it. `isletme_id` is read only from the signed access token; on the business-select endpoint the
+   client's value is used only after membership is verified.
+4. The app connects as `panosu_app` (RLS-bound, no DDL). Migrations run with `PANOSU_MIGRASYON_URL`.
+   No autogenerate; migrations are hand-written.
+5. Money is `Decimal` only, never float.
+6. Never delete or weaken tests, no `skip`/`xfail`. If a security/isolation test is red, do not fix it: stop and report.
+7. Passwords never appear in output, reports or commits. `.env` is never committed. `PANOSU_JWT_GIZLI` and the demo
+   password are never printed. K26: the public live demo password (`PANOSU_DEMO_GIRIS_PAROLA`) differs from local
+   ones and still never appears in code, tests (as a literal), output or commits.
+8. New packages need approval.
+9. Push to GitHub only with explicit approval.
+10. Unrequested refactors or new files/folders: ask first.
 
-## Veritabanları
-| Ad | Amaç | Kural |
+## Databases
+| Name | Purpose | Rule |
 |---|---|---|
-| `panosu` | Canlı; yalnızca gerçek işletme verisi | Yalnızca salt-okunur sorgu. Her yazma işlemi açık onay ister. `alembic upgrade` asla çalıştırılmaz (yalnızca onaylı `stamp`). |
-| `panosu_test` | pytest | Silinip `alembic upgrade head` ile yeniden kurulabilir |
-| `panosu_demo` | Sentetik veri, demo, backtest | Kuruldu; 5 [DEMO] işletme (+ yalnızca yerelde [DEMO] Butik Kopya: Butik Reformer'ın içe aktarma kopyası, Adım 4b-1 elle denemesi, sahibi kopya@panosu.local, gider yok; demo_kur yeniden kurmaz), sentetik veri; [DEMO] Denge Pilates'te üyelik paketleri, yenileme riskleri ve 2026-03'ten itibaren her ay 330.000 TL demo gideri (Panosu'ya geçiş ayı) (paket dönemi ziyaret tutarları 0); [DEMO] Butik Reformer: Faz 0 demosu (p ~ Beta(1, 290), ayda 5 yeni üye; ~75 aktif üye, 18 ay paket/ziyaret geçmişi, her ay gider). Yükleyici yalnızca _demo adlarına yazar. Demo sunucusunun her açılışında ve her gece 03:00'te bugüne kaydırılır (K11). |
-| Neon `panosu_demo` (yayın) | Canlı demo | Yalnızca Render (panosu_app) ve GitHub Actions bağlanır; yerelden bağlanılmaz; kurulum demo-kur.yml, tazeleme demo-tazele.yml; adresler postgresql+psycopg2:// ile başlar |
+| `panosu` | Live, real business data only | Read-only queries; every write needs explicit approval; never `alembic upgrade` (approved `stamp` only) |
+| `panosu_test` | pytest | Can be dropped and rebuilt with `alembic upgrade head` |
+| `panosu_demo` | Synthetic demo data, 5 [DEMO] businesses | Loaders write only to `_demo` names; detail in `docs/commands.md` |
+| Neon `panosu_demo` | Live demo https://panosu.onrender.com | Only Render (`panosu_app`) and GitHub Actions connect; never from local |
 
-Sentetik veri ASLA `panosu`'ya yazılmaz.
+Synthetic data is NEVER written to `panosu`. Tests refuse to run on a database whose name does not end in `_test`.
 
-## Komutlar
+## Core commands
 ```powershell
-.\.venv\Scripts\python.exe -m pytest -v          # tam test paketi (panosu_test)
-.\.venv\Scripts\python.exe -c "import main"      # import kontrolü
-uvicorn main:app --reload                        # geliştirme sunucusu, /docs
-
-.\.venv\Scripts\python.exe -m sentetik --sadece-uret                    # veritabanına dokunmadan üret + V1 ROC AUC
-.\.venv\Scripts\python.exe -m sentetik --veritabani panosu_demo          # üret ve panosu_demo'ya yükle
-.\.venv\Scripts\python.exe -m sentetik --veritabani panosu_demo --temizle  # eski [DEMO] verisini silip yeniden yükle
-
-.\.venv\Scripts\python.exe -m backtest                  # 6 senaryo × 20 tohum; docs/backtest-sonuclari.md + raporlar/backtest/*.csv
-.\.venv\Scripts\python.exe -m backtest --tohum-sayisi 2 # hızlı deneme
-
-.\.venv\Scripts\python.exe -m sentetik.paket_uretici --veritabani panosu_demo    # demo stüdyoya paket (bir kez)
-.\.venv\Scripts\python.exe -m sentetik.paket_uretici --veritabani panosu_demo --giderler 2026-10   # demo giderleri
-.\.venv\Scripts\python.exe -m sentetik.paket_uretici --veritabani panosu_demo --gecmis-giderler   # 2026-03'ten (ya da ilk ziyaret ayından) bugüne eksik aylar
-.\.venv\Scripts\python.exe -m sentetik.paket_uretici --veritabani panosu_demo --gecmis-giderler --guncelle   # ayrıca demo giderlerini güncelle, 2026-03 öncesini sil
-# UYARI: paket_uretici --gecmis-giderler takvim başlangıcını (2026-03) kullanır; tazeleme sonrası çalıştırma, gider penceresini bozar.
-.\.venv\Scripts\python.exe -m sentetik.butik_reformer --veritabani panosu_demo    # ikinci Faz 0 demosu (bir kez)
-.\.venv\Scripts\python.exe -m sentetik.butik_reformer --veritabani panosu_demo --yeniden   # yalnızca Butik Reformer'ı silip yeniden yükle
-.\.venv\Scripts\python.exe -m sentetik.demo_kullanici --veritabani panosu_demo    # demo@panosu.local (parola getpass)
-.\.venv\Scripts\python.exe -m servisler.isletme_ac --veritabani <ad> --eposta <e> --ad-soyad <a> --isletme <ad>  # pilot işletme (_demo/_test; canlı: --canli-onay, ayrı onayla)
-.\.venv\Scripts\python.exe -m servisler.rapor_uret --veritabani panosu_demo --isletme <uuid> --cikti raporlar/haftalik.html
-.\.venv\Scripts\python.exe -m servisler.yenileme_calistir --veritabani panosu_demo --isletme <uuid>  # yenileme riski (_demo/_test)
-.\.venv\Scripts\python.exe -m sentetik.demo_sunucu                 # web paneli panosu_demo ile, 127.0.0.1:8000 (--port); açılışta ve her gece 03:00'te demo tazeleme
-.\.venv\Scripts\python.exe -m sentetik.demo_sunucu --tazeleme-yok  # tazelemesiz
-.\.venv\Scripts\python.exe -m sentetik.demo_tazele --veritabani panosu_demo --kuru   # demo tazeleme raporu, yazmaz
-.\.venv\Scripts\python.exe -m sentetik.demo_tazele --veritabani panosu_demo          # [DEMO] verisini bugüne kaydır + riskleri yeniden hesapla
-.\.venv\Scripts\python.exe -m sentetik.demo_kur --veritabani <ad>_demo   # tüm [DEMO] verisini silip baştan kur (PANOSU_DEMO_PAROLA ortamda; --uygulama-parolasi-ayarla yalnızca yayında)
-.\.venv\Scripts\python.exe -m servisler.ice_aktar --veritabani <ad> --isletme <uuid> --kaynak <ad> --uyeler u.csv --paketler p.csv --girisler g.csv   # içe aktarma ÖNİZLEMESİ (yazmaz; önerilen eşleştirme raporlar/ice_aktarma_esleme.json); yalnızca _demo/_test
-.\.venv\Scripts\python.exe -m servisler.ice_aktar ... --esleme raporlar/ice_aktarma_esleme.json --onayla   # tek işlemde yaz + yenileme riski; --anonim: ad "Üye xxxxxx", telefon/e-posta okunmaz
-.\.venv\Scripts\python.exe -m sentetik.disa_aktar --veritabani <ad>_demo --isletme <uuid> --cikti raporlar/disa_aktarma/   # üye/paket/giriş CSV'leri (cp1254, ";")
+.\.venv\Scripts\python.exe -m pytest -v                  # full suite (panosu_test)
+.\.venv\Scripts\python.exe -c "import main"              # import check
+.\.venv\Scripts\python.exe -m backtest --tohum-sayisi 2  # quick backtest
+.\.venv\Scripts\python.exe -m sentetik.demo_sunucu       # panel on panosu_demo, 127.0.0.1:8000
 ```
-Test adresleri: `PANOSU_TEST_APP_URL` / `PANOSU_TEST_ADMIN_URL` ortamda tanımlıysa onlar kullanılır; değilse
-`tests/conftest.py`, `.env`'deki `PANOSU_VERITABANI_URL` / `PANOSU_MIGRASYON_URL`'den yalnızca veritabanı adını
-`panosu_test` yaparak türetir. Her iki durumda da adı `_test` ile bitmeyen veritabanında testler çalışmaz.
+All other commands (synthetic data, demo setup/refresh, import/export, reports), test URL rules and schema setup:
+`docs/commands.md`.
 
-Sentetik veri yükleyicisi: hedef `--veritabani` ile zorunlu olarak verilir (yalnızca `--sadece-uret`'te gerekmez);
-bağlantı adresleri `.env`'deki iki URL'den yalnızca veritabanı adı değiştirilerek türetilir. Ad `_demo` ile
-bitmiyorsa bağlantı kurulmadan hata verir. Gerçek değerler `veri/gercek_degerler.csv`'ye yazılır (commit'lenmez).
+## Roadmap
+This table is the single source of step status; README only summarizes. Step details, hypotheses, ideas and the
+research shelf: `docs/roadmap.md`. Math decisions (model choice, assumptions) belong to the owner.
 
-Boş bir veritabanına şema kurmak: `PANOSU_MIGRASYON_URL` yalnızca o komut için hedef veritabanını
-gösterecek şekilde `alembic upgrade head`.
-
-## Yol haritası
-| # | Adım | Durum |
+| # | Step | Status |
 |---|---|---|
-| 1 | Güvenlik kilidi (RLS, bekçi testleri) | Tamam |
-| 2 | Alembic baseline | Tamam |
-| 3 | Müşteri API'si | Tamam |
-| 4a | Hizmetler + ziyaretler API'si, sentetik veri motoru (yalnızca _demo veritabanlarına yazar) | Tamam |
-| 5a | Model kütüphanesi: V1, BG/NBD, MBG/NBD, Gamma-Gamma, Riskteki Para (veritabanı yok; tasarım: `docs/adim-5-6-tasarim.md`) | Tamam |
-| 6 | Backtest: V1, BG/NBD ve MBG/NBD'nin sentetik veride (S0–S5) karşılaştırılması (ROC AUC, kalibrasyon); sonuç: `docs/backtest-sonuclari.md` | Tamam |
-| 5b | Sözleşmeli üyelik (paketler), yenileme riski (M3 + simülasyon), S6 backtest, panel ucu (`docs/adim-5b-tasarim.md`) | Tamam |
-| 5c | Yenileme modelinin gerçek yenileme verisiyle kalibrasyonu (Faz 0 verisi gelince). Test edilecek hipotezler (proje sahibinin gözlemi): (1) aktif üyelerin yenileme oranı ρ %90'ın üzerinde; (2) önceki yenileme sayısı yenilemenin güçlü habercisi; (3) az gelip yine de yenileyen bir grup var ve model onlara yanlış alarm veriyor olabilir. S6'da Riskteki Para'nın %13 düşük çıkmasının nedeni ρ = 1 varsayımıdır. | Bekliyor |
-| 7 | Panel: sessiz üyeler, gelir ve kâr özeti (giderler, başabaş), haftalık rapor (`docs/adim-7-tasarim.md`). Geçmiş ayda başabaş farkı ay ortalamasıyla (K2, `docs/adim-9-tasarim.md`) | Tamam |
-| 4b | CSV/Excel içe aktarma (`docs/adim-4b-tasarim.md`; 8'e bağlı değil). Not: içe aktarmada giriş (check-in) ziyaretlerinin tutarı 0 olmalı; aksi hâlde paket geliri iki kez sayılır. | 4b-1 Tamam (CSV/Excel içe aktarma çekirdeği, komut, dışa aktarma, gidiş-dönüş testi); 4b-2 gerçek veriyle doğrulama ve 4b-3 web ekranı bekliyor |
-| 8 | Gerçek kimlik doğrulama + işletme kaydı: Argon2id + JWT, tek kullanımlık yenileme tokenı, davet kodları (`docs/adim-8-tasarim.md`). Canlı `panosu` migration'ı ayrı onay bekliyor. | Tamam |
-| 8a | Soğuk başlangıç modu (9'dan önce; yalnızca plan): geçmiş verisi az olan işletmede MBG/NBD parametreleri, diğer işletmelerden veya sentetik veriden öğrenilen önsel (prior) ile başlar ve işletmenin verisi geldikçe Bayesçi olarak güncellenir. Bu dönemde panelde tahminler 'ön tahmin' etiketiyle gösterilir. | Planlandı |
-| 8b | Otomatik hesaplama (9'dan önce; yalnızca plan): finans paneli her veri girişinde anında, yenileme riskleri her gece otomatik yeniden hesaplanır. (demo için gece tazeleme 9c'de yapıldı; gerçek işletmeler bekliyor) | Planlandı |
-| 9 | Web paneli (Jinja + HTMX, FastAPI içinde; `docs/adim-9-tasarim.md`), panosu_demo ile canlı demo | Tamam |
-| 10 | İzin, mesaj, geri kazanım ölçümü | Planlandı |
-| 11 | Yayına alma: Docker, CI, sunucu, güçlü ve farklı parolalar, ödeme (`docs/adim-11-tasarim.md`) | Tamam (minimum yayın 2026-10-02: https://panosu.onrender.com; ödeme sonraya) |
-| — | Model düzeltmesi (μ, κ): MAP, zayıf önsel, merkezi fark, iki başlangıç (`docs/adim-mu-kappa-tasarim.md`) | Tamam |
-| — | Matematik raporu: model, MAP ve zayıf tanımlanabilirlik, simülasyon, doğrulama, sınırlar (`docs/matematik-raporu.md`) | Tamam |
+| 1 | Security lock (RLS, guard tests) | Done |
+| 2 | Alembic baseline | Done |
+| 3 | Customer API | Done |
+| 4a | Services + visits API, synthetic data engine | Done |
+| 4b | CSV/Excel import (`docs/adim-4b-tasarim.md`) | 4b-1 Done; 4b-2 real-data validation and 4b-3 web screen pending |
+| 5a | Model library: V1, BG/NBD, MBG/NBD, Gamma-Gamma, Riskteki Para (`docs/adim-5-6-tasarim.md`) | Done |
+| 5b | Memberships, renewal risk, S6 backtest (`docs/adim-5b-tasarim.md`) | Done |
+| 5c | Renewal model calibration with real renewal data | Waiting for Faz 0 data |
+| 6 | Backtest S0-S5 (`docs/backtest-sonuclari.md`) | Done |
+| 7 | Panel: silent members, revenue and profit, weekly report (`docs/adim-7-tasarim.md`) | Done |
+| 8 | Auth + business sign-up (`docs/adim-8-tasarim.md`); live `panosu` migration needs separate approval | Done |
+| 8a | Cold-start mode (prior learned from other businesses) | Planned |
+| 8b | Automatic recalculation for real businesses | Planned |
+| 9 | Web panel, Jinja + HTMX (`docs/adim-9-tasarim.md`) | Done |
+| 10 | Consent, messaging, win-back measurement | Planned |
+| 11 | Deployment (`docs/adim-11-tasarim.md`) | Done (live 2026-10-02; payments later) |
+| - | Model fix (μ, κ): MAP, weak prior, two starts (`docs/adim-mu-kappa-tasarim.md`) | Done |
+| - | Math report: model, MAP, validation, limitations (`docs/matematik-raporu.md`) | Done |
 
-Geliştirme fikirleri (karar değil; ilgili adımda tasarlanacak):
-- Adım 4b: yapay zekâ ile CSV sütun eşleme önerisi; yoklama defteri fotoğrafından tablo çıkarma.
-- Adım 10: kontrol gruplu mesajlaşma ve uplift ölçümü; "uyuyan köpekleri" (ödeyip az gelen üyeleri) rahatsız
-  etmeme; geri kazanımın nedensel kanıtı.
-- Adım 8a: işletmeler arası hiyerarşik Bayes önselleri.
-- Adım 11 sonrası: yazılım firmalarına Skor API'si.
+## Open issues (Açık konular)
+- After the (μ, κ) fix (`docs/adim-mu-kappa-tasarim.md` section 4): tune prior centers (`analitik.bgnbd` ONSEL_*)
+  on real data in 4b-2; minimum-data guard (all single-visit or 1-day history gives confident but meaningless
+  output; thresholds are the owner's call); similar ridge in Gamma-Gamma (q → ∞, backtest only); full Bayes /
+  Rao-Blackwell for parameter uncertainty in the renewal simulation.
+- Synthetic generator (low priority): in [DEMO] Butik Reformer 2% of members visit several times a day (up to 6.2),
+  and 9 members have 22 same-second visit pairs (different dis_kimlik); import collapses them (K33). Fixing changes
+  demo numbers: separate decision.
 
-- Araştırma rafı (zaman kalırsa): RFM/kohort, sağkalım analizi (Kaplan-Meier, Cox), XGBoost + SHAP,
-  kampanya simülatörü / A-B güç analizi.
-  - Kafe/restoran modülü (menü fotoğrafından ürün çıkarma, menü mühendisliği, enflasyon/marj alarmı). Başlama
-    koşulu: stüdyo ürünü en az bir gerçek stüdyoda çalışıyor ve bir kafe ürün bazında satış verisi verebiliyor.
-  - Veteriner klinikleri: aşı/kontrol döngüsü (ileride değerlendirilecek).
-- Faz 0: işletmelerle talep ve veri formatı görüşmeleri. Kod değildir; proje sahibi yürütür.
-- Yol haritasının tek kaynağı bu dosyadır. README yalnızca kısa bir özet verir.
-- Matematik kararları (model seçimi, varsayımlar) proje sahibinindir. 5a/6'nın onaylı tasarımı
-  `docs/adim-5-6-tasarim.md`; 5b'nin onaylı tasarımı `docs/adim-5b-tasarim.md` (ürüne M3 girdi).
-- Raporlar raporlar/ klasörüne kaydedilir; bu klasör git'e girmez.
-
-## Açık konular
-- Kapandı (2026-10-03): test_demo_tazele.py::test_denetim_kayitlari_degismez'in aralıklı düşmesinin kökü a,b sırtıydı; (μ, κ) yeniden parametreleme + zayıf önsel (MAP) ile giderildi, 20/20 geçiyor, backtest yeniden üretildi (`docs/adim-mu-kappa-tasarim.md`).
-- Model düzeltmesi (μ, κ) sonrası kapsam dışı kalanlar (`docs/adim-mu-kappa-tasarim.md` Bölüm 4):
-  - Önsel merkezlerinin (`analitik.bgnbd` ONSEL_* sabitleri) gerçek veride ayarı: 4b-2'de zaman bölmeli testle.
-  - Asgari veri koruması: herkes tek ziyaretli veya 1 günlük geçmişte model emin ama anlamsız cevap veriyor; eski kodda da böyle. Eşikler proje sahibinin kararı.
-  - Gamma-Gamma'da benzer sırt (q → ∞); yalnızca backtest'te kullanılıyor.
-  - Sentetik üretici: Butik Reformer'da üyelerin %2'si günde birden fazla ziyaret yapıyor (6,2/güne kadar).
-  - Tam Bayes / Rao-Blackwell (parametre belirsizliğini yenileme simülasyonuna taşımak).
-- Sentetik üretici (düşük öncelik): [DEMO] Butik Reformer'da 9 üyede saniyesine kadar aynı zamanlı 22 ziyaret çifti var (farklı dis_kimlik). Gerçekte çift okutma olurdu; içe aktarma bunları tek kayda indirir (K33). Düzeltmek demo sayılarını değiştirir; ayrı karar.
-
-## Çalışma şekli
-- Her görevin sonunda rapor: değişen dosyalar, pytest özet satırı, talimattan her sapma.
-- "Tamamlandı" demek için kanıt gerekir: komut çıktısı veya test sonucu.
-- Bir adım bittiğinde bu dosyadaki yol haritası tablosu güncellenir.
+## Working rules
+- After every task report: changed files, pytest summary line, every deviation from the instruction.
+- "Done" needs evidence: command output or test result.
+- When a step finishes, update the roadmap table here.
+- Reports go to `raporlar/` (gitignored).
