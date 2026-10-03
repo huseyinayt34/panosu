@@ -50,8 +50,8 @@ def _iki_uyelikli_kullanici(istemci, kayit_temizligi, a):
 
 # ---------------------------------------------------------------- Oturumsuz erişim ve CSRF
 
-def test_cerezsiz_pano_ve_kok_giris_sayfasina(istemci):
-    for adres in ("/pano", "/"):
+def test_cerezsiz_pano_giris_sayfasina(istemci):
+    for adres in ("/pano",):
         y = istemci.get(adres, follow_redirects=False)
         assert (y.status_code, y.headers["location"]) == (303, "/giris")
 

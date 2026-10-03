@@ -1,11 +1,13 @@
-# Panosu — Müşteri Zekâ Platformu
+# Ritmeva — Müşteri Zekâ Platformu
+
+Kod ve depo adı: Panosu.
 
 Tekrar eden müşterisi olan işletmeler (pilates/spor stüdyosu, salon, klinik vb.) için **çok kiracılı (multi-tenant) müşteri analitiği**.
 Amaç: hangi müşterinin kaybedilmek üzere olduğunu (churn) olasılıksal olarak tahmin etmek, bunu **"Riskteki Para"** olarak göstermek ve her riskli üye için **neden riskli** olduğunu tek cümleyle açıklamak.
 
 ## Canlı demo
 
-**https://panosu.onrender.com**
+Ana adres **https://panosu.onrender.com** tanıtım sayfasıdır. Demo girişi: **https://panosu.onrender.com/giris**
 
 - Giriş formu demo hesabıyla dolu gelir; **Giriş**'e basmanız yeterli. Ardından bir **[DEMO]** işletme seçin; en zengin örnekler **Butik Reformer** ve **Denge Pilates Stüdyosu**.
 - Panelde: aylık gelir, gider, kâr ve **başabaş** (kaç aktif üyede kâra geçildiği), **yenilemesi riskli üyeler** (her biri için "neden riskli" açıklaması), **sessiz üyeler** ve yazdırılabilir **haftalık rapor**.

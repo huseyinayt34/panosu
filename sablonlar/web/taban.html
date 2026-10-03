@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block baslik %}Panosu{% endblock %}</title>
+<title>{% block baslik %}Ritmeva{% endblock %}</title>
 <link rel="stylesheet" href="/statik/panel.css">
 {% block bas %}{% endblock %}
 </head>
 <body{% block govde_nitelikleri %}{% endblock %}>
 <header class="ust">
-  <a class="marka" href="/pano">Panosu</a>
+  <a class="marka" href="{{ '/pano' if oturum_acik else '/' }}">Ritmeva</a>
   {% if isletme_adi %}<span class="isletme-adi">{{ isletme_adi }}</span>{% endif %}
   {% if oturum_acik %}
   <nav>

@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ritmeva · Kaybedeceğiniz üyeyi, kaybetmeden görün</title>
+<meta name="description" content="Stüdyo yazılımlarına eklenen üye kaybı tahmin motoru: kim gidiyor, neden ve kaç lira. Sizin sunucunuzda çalışır.">
+<meta name="theme-color" content="#0b121d">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 32'%3E%3Ccircle cx='16' cy='16' r='10' fill='none' stroke='%2334c3a5' stroke-width='2.4'/%3E%3Ccircle cx='6.94' cy='11.77' r='2.7' fill='%2334c3a5'/%3E%3Ccircle cx='19.42' cy='6.6' r='2.7' fill='%2334c3a5'/%3E%3Ccircle cx='11' cy='24.66' r='2.7' fill='%2334c3a5'/%3E%3Ccircle cx='29.6' cy='20.95' r='3' fill='%23f5a54a'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/statik/tanitim.css">
+</head>
+<body>
+{# Ritmeva public landing page (docs/adim-ritmeva-tasarim.md). No session, no database, no cookies. #}
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!-- Logo mark: an orbit with three members on it and one amber member drifting off (the member about to leave) -->
+  <symbol id="mark" viewBox="0 0 34 32">
+    <circle cx="16" cy="16" r="10" fill="none" stroke="#34c3a5" stroke-width="2.4"/>
+    <line x1="25.4" y1="19.42" x2="27.4" y2="20.15" stroke="#f5a54a" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="1.2 1.6" opacity=".8"/>
+    <circle cx="6.94" cy="11.77" r="2.7" fill="#34c3a5"/>
+    <circle cx="19.42" cy="6.6" r="2.7" fill="#34c3a5"/>
+    <circle cx="11" cy="24.66" r="2.7" fill="#34c3a5"/>
+    <circle cx="29.6" cy="20.95" r="3" fill="#f5a54a"/>
+  </symbol>
+</svg>
+
+<div class="nav" id="nav">
+  <div class="wrap">
+    <a class="logo" href="#top" aria-label="Ritmeva"><svg aria-hidden="true"><use href="#mark"/></svg>ritmeva</a>
+    <ul>
+      <li><a href="#nasil">Nasıl çalışır</a></li>
+      <li><a href="#kanit">Kanıt</a></li>
+      <li><a href="#firmalar">Firmalar için</a></li>
+      <li><a href="#sss">SSS</a></li>
+    <li><a href="/giris">Canlı demo</a></li>
+    </ul>
+    <a class="btn btn-primary btn-sm" href="#pilot">Pilot görüşmesi</a>
+  </div>
+</div>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div>
+      <span class="for"><span class="dot"></span>Üye kaybı tahmini ·<span class="rot" id="rot"><span class="on">pilates</span><span>reformer</span><span>yoga</span><span>spor salonu</span></span></span>
+      <h1><span class="w">Kaybedeceğiniz</span> <span class="w">üyeyi,</span> <span class="w"><em>kaybetmeden</em></span> <span class="w">görün.</span></h1>
+      <p class="lead">Her üyenin bir geliş ritmi var. <b>Ritim bozulunca Ritmeva haber verir:</b> kim, neden ve kaç lira.</p>
+      <div class="ctas">
+        <a class="btn btn-primary" href="#pilot">Pilot görüşmesi planla <span class="arrow" aria-hidden="true">→</span></a>
+        <a class="btn btn-ghost" href="/giris">Canlı demoyu aç</a>
+      </div>
+      <p class="fine"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 2.5 3.8v4c0 3.2 2.3 5.6 5.5 6.7 3.2-1.1 5.5-3.5 5.5-6.7v-4L8 1.5Z" fill="none" stroke="#6f7f96" stroke-width="1.3"/><path d="m5.6 8 1.7 1.7 3.2-3.4" fill="none" stroke="#34c3a5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Üye verisi sizin sunucunuzdan çıkmaz.</p>
+    </div>
+    <div class="stage" id="stage" aria-label="Üyeler stüdyonun etrafında dönüyor; turuncu üye yörüngeden çıkmak üzere">
+      <div class="still"><svg viewBox="0 0 34 32" aria-hidden="true"><use href="#mark"/></svg></div>
+      <div class="legend"><span><i style="background:#34c3a5"></i>Düzenli gelen üye</span><span><i style="background:#f5a54a"></i>Ayrılmak üzere</span></div>
+    </div>
+  </div>
+</header>
+
+<div class="ticker" aria-hidden="true">
+  <div class="track">
+    <span><b>Kim</b> gidiyor?</span><span><b>Neden</b> gidiyor?</span><span><b>Kaç lira</b> riskte?</span><span>Bugün <b>kimi</b> aramalı?</span>
+    <span><b>Kim</b> gidiyor?</span><span><b>Neden</b> gidiyor?</span><span><b>Kaç lira</b> riskte?</span><span>Bugün <b>kimi</b> aramalı?</span>
+  </div>
+</div>
+
+<section class="block" id="nasil">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <p class="kicker">Aradaki fark</p>
+      <h2>Bugün kaybı paket bitince görüyorsunuz.</h2>
+      <p>Ritmeva aynı üyeyi haftalar önce gösterir. Arayıp geri kazanacak zamanınız olur.</p>
+    </div>
+    <div class="ba">
+      <div class="side rv">
+        <p class="tag">Bugün</p>
+        <h3>Selin sessizce gider. Paket bitince fark edilir.</h3>
+        <div class="timeline">
+          <svg viewBox="0 0 400 74" aria-label="Selin haftada bir geliyor, sonra gelmeyi bırakıyor; paket bittiğinde fark ediliyor">
+            <line x1="8" y1="44" x2="392" y2="44" stroke="#22304a" stroke-width="2"/>
+            <g fill="#34c3a5"><rect x="18" y="30" width="5" height="28" rx="2.5"/><rect x="48" y="30" width="5" height="28" rx="2.5"/><rect x="78" y="30" width="5" height="28" rx="2.5"/><rect x="108" y="30" width="5" height="28" rx="2.5"/><rect x="138" y="30" width="5" height="28" rx="2.5"/><rect x="168" y="30" width="5" height="28" rx="2.5"/></g>
+            <line x1="178" y1="44" x2="352" y2="44" stroke="#3a4a66" stroke-width="2" stroke-dasharray="3 6"/>
+            <circle cx="362" cy="44" r="13" fill="rgba(255,123,107,.14)" stroke="#ff7b6b" stroke-width="2"/>
+            <path d="m356 38 12 12m0-12-12 12" stroke="#ff7b6b" stroke-width="2.2" stroke-linecap="round"/>
+            <text x="362" y="16" text-anchor="middle" fill="#ff7b6b" font-size="12" font-family="IBM Plex Sans, sans-serif">paket bitti</text>
+          </svg>
+          <div class="cap"><span>haftada bir</span><span>45 gün sessizlik</span><span>çok geç</span></div>
+        </div>
+      </div>
+      <div class="side after rv">
+        <p class="tag">Ritmeva ile</p>
+        <h3>Ritim bozulduğu hafta uyarı gelir, Selin geri döner.</h3>
+        <div class="timeline">
+          <svg viewBox="0 0 400 74" aria-label="Selin'in ritmi bozulunca uyarı geliyor, aranıyor ve tekrar gelmeye başlıyor">
+            <line x1="8" y1="44" x2="392" y2="44" stroke="#22304a" stroke-width="2"/>
+            <g fill="#34c3a5"><rect x="18" y="30" width="5" height="28" rx="2.5"/><rect x="48" y="30" width="5" height="28" rx="2.5"/><rect x="78" y="30" width="5" height="28" rx="2.5"/><rect x="108" y="30" width="5" height="28" rx="2.5"/><rect x="138" y="30" width="5" height="28" rx="2.5"/><rect x="168" y="30" width="5" height="28" rx="2.5"/></g>
+            <rect x="178" y="30" width="44" height="28" rx="6" fill="rgba(245,165,74,.12)"/>
+            <circle cx="222" cy="44" r="12" fill="#f5a54a"/>
+            <path d="M222 37.5c-2.6 0-4.4 2-4.4 4.6v3.2l-1.4 2.2h11.6l-1.4-2.2v-3.2c0-2.6-1.8-4.6-4.4-4.6Zm-1.6 11.2a1.6 1.6 0 0 0 3.2 0" fill="#052019"/>
+            <text x="222" y="16" text-anchor="middle" fill="#f5a54a" font-size="12" font-family="IBM Plex Sans, sans-serif">uyarı</text>
+            <g fill="#34c3a5"><rect x="268" y="30" width="5" height="28" rx="2.5"/><rect x="298" y="30" width="5" height="28" rx="2.5"/><rect x="328" y="30" width="5" height="28" rx="2.5"/><rect x="358" y="30" width="5" height="28" rx="2.5"/></g>
+            <text x="246" y="16" fill="#9eacbf" font-size="12" font-family="IBM Plex Sans, sans-serif" text-anchor="start">arandı</text>
+          </svg>
+          <div class="cap"><span>haftada bir</span><span>14. gün uyarı</span><span>yeniden geliyor</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <p class="kicker">Her sabah üç cevap</p>
+      <h2>Uzun rapor yok. Üç soru, üç net cevap.</h2>
+    </div>
+    <div class="q3">
+      <div class="q rv"><div class="big r">Kim?</div><h3>Gitmek üzere olan üyeler</h3><p>En riskliden başlayan kısa bir liste.</p><div class="eg">Üye 0142 · yenileme ihtimali <b class="num">%9</b></div></div>
+      <div class="q rv"><div class="big">Neden?</div><h3>Tek cümlelik gerekçe</h3><p>Listeye neden güvenmeniz gerektiğini görürsünüz.</p><div class="eg">Normalde 7 günde bir geliyor, 45 gündür yok.</div></div>
+      <div class="q rv"><div class="big a">Kaç lira?</div><h3>Riskteki para</h3><p>Hiçbir şey yapmazsanız kaybedeceğiniz ciro.</p><div class="eg">Önümüzdeki 45 gün: <b class="num">23.107 TL</b></div></div>
+    </div>
+
+    <div class="window rv" aria-label="Ritmeva panelinden örnek ekran">
+      <div class="chrome"><i></i><i></i><i></i><span>ritmeva · Butik Reformer · riskli üyeler</span></div>
+      <div class="win-top">
+        <div class="money"><div class="lbl">Riskteki Para, önümüzdeki 45 gün</div><div class="val">23.107 TL</div></div>
+        <span class="chip">79 aktif üye · sentetik demo</span>
+      </div>
+      <div class="scroll">
+        <table class="risk">
+          <thead><tr><th>Üye</th><th>Yenileme ihtimali</th><th>Neden</th><th class="r">Riskte</th><th class="r"></th></tr></thead>
+          <tbody>
+            <tr><td>Üye 0142</td><td><span class="meter"><b>%9</b><span><i style="width:91%"></i></span></span></td><td class="why">Normalde 7 günde bir geliyor, 45 gündür yok.</td><td class="r num">3.276 TL</td><td class="r"><span class="call">Bugün ara</span></td></tr>
+            <tr><td>Üye 0087</td><td><span class="meter"><b>%14</b><span><i style="width:86%"></i></span></span></td><td class="why">Son 4 haftada 1 kez geldi, önceki ay 9 kez.</td><td class="r num">3.096 TL</td><td class="r"><span class="call">Bugün ara</span></td></tr>
+            <tr><td>Üye 0019</td><td><span class="meter"><b>%22</b><span><i style="width:78%"></i></span></span></td><td class="why">Paketinde 6 ders kaldı, son girişi 23 gün önce.</td><td class="r num">1.872 TL</td><td class="r"><span class="call">Bugün ara</span></td></tr>
+            <tr><td>Üye 0203</td><td><span class="meter mid"><b>%41</b><span><i style="width:59%"></i></span></span></td><td class="why">Geliş aralığı 5 günden 12 güne çıktı.</td><td class="r num">1.416 TL</td><td class="r"><span class="call">Bu hafta</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="caption">Çubuk ne kadar doluysa risk o kadar yüksek. Tüm üyeler ve tutarlar sentetik demo verisidir.</p>
+  </div>
+</section>
+
+<section class="block" id="kanit">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <p class="kicker">Kanıt</p>
+      <h2>Tahmin değil, ölçüm.</h2>
+      <p>Model geçmişin bir kısmını saklayıp geleceği tahmin etti, sonra gerçekle karşılaştırıldı.</p>
+    </div>
+    <div class="proof">
+      <div class="rv"><div class="n num">0,83</div><h3>Gidecek üyeyi ayırt etme</h3><p>Yazı tura 0,50, kusursuz 1,00. Basit "son 3 haftada en fazla 1 kez geldiyse riskli" kuralı 0,72'de kaldı.</p></div>
+      <div class="rv"><div class="n num">%13<small>sapma</small></div><h3>Kayıp ciro tahmini</h3><p>Toplam kayıp ciroyu %13 eksik tahmin etti. Basit kural %36 eksik kaldı.</p></div>
+      <div class="rv"><div class="n num">0<small>kişisel veri</small></div><h3>Bize gelen veri</h3><p>Ritmeva sizin sunucunuzda çalışır. Üye bilgisi dışarı çıkmaz.</p></div>
+    </div>
+    <div class="honest rv">
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8.5" fill="none" stroke="#34c3a5" stroke-width="1.5"/><path d="M10 9v5M10 6.2v.1" stroke="#34c3a5" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <p><b>Kara kutu değil.</b> Ritmeva yapay zekâ değil, 20 yıldır kullanılan ve hakemli dergilerde yayımlanmış bir olasılık modelidir (MBG/NBD). Her sayının nereden geldiği açıklanabilir. Ölçümler 2 yıllık sentetik stüdyo verisinde, 1.500 üyeyle, 20 tekrarla yapıldı; gerçek veride ilk ölçüm pilotla yapılır.</p>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="firmalar">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <p class="kicker">Stüdyo yazılımı firmaları için</p>
+      <h2>Sizin ekranınıza eklenen bir modül.</h2>
+      <p>Stüdyolarınız yeni bir uygulama öğrenmez. Liste sizin panelinizde, sizin markanızla görünür.</p>
+    </div>
+    <div class="firm">
+      <div class="rv"><h3>Sizin sunucunuzda</h3><p>Docker paketi olarak kurulur. KVKK sorumluluğu sizde kalır, bize veri gelmez.</p></div>
+      <div class="rv"><h3>Basit bağlantı</h3><p>Giriş kayıtlarını verirsiniz, her üye için ihtimal, gerekçe ve tutar alırsınız.</p></div>
+      <div class="rv"><h3>Önce kendi verinizde</h3><p>Pilotta bir stüdyonuzun anonim geçmişiyle test edilir. Sonuçları birlikte görürüz.</p></div>
+    </div>
+    <div class="flow rv" aria-label="Süreç"><span>Ücretsiz pilot</span><i>→</i><span>Entegrasyon</span><i>→</i><span>Stüdyo başına aylık lisans</span></div>
+  </div>
+</section>
+
+<section class="block" id="sss">
+  <div class="wrap faq">
+    <div class="sec-head rv">
+      <p class="kicker">Sık sorulan sorular</p>
+      <h2>Aklınızdaki sorular.</h2>
+      <p>Cevabını bulamadığınız soruyu 15 dakikalık görüşmede konuşalım.</p>
+    </div>
+    <div class="qa rv">
+      <details open><summary>Ne kadar doğru?</summary><p class="ans">Sentetik bir stüdyo verisinde gidecek üyeyi ayırt etmede <b>0,83</b> aldı (yazı tura 0,50, kusursuz 1,00). Sizin verinizde ne kadar doğru olduğunu pilot gösterir: bir stüdyonuzun geçmişinin son 90 gününü saklarız, model tahmin eder, gerçekle karşılaştırırız. Rakam uydurmuyoruz.</p></details>
+      <details><summary>Üye verimiz nereye gidiyor?</summary><p class="ans">Hiçbir yere. Ritmeva <b>sizin sunucunuzda</b> çalışır, üye bilgisi dışarı çıkmaz. Pilotta da ad, telefon ve e-posta gerekmez; üye numarası ve giriş tarihleri yeter. Anonimleştirmeyi isterseniz kendi bilgisayarınızda yaparsınız.</p></details>
+      <details><summary>Bu bir yapay zekâ mı?</summary><p class="ans">Hayır. Ritmeva <b>istatistiksel bir olasılık modeli</b> kullanır (MBG/NBD). Pazarlama araştırmasında 20 yıldır kullanılan, hakemli dergilerde yayımlanmış bir yöntemdir. Her skorun nereden geldiği açıklanabilir; kara kutu yoktur.</p></details>
+      <details><summary>Hangi veri gerekiyor?</summary><p class="ans">En az: <b>üye numarası ve giriş tarihleri</b>. Paket bitiş tarihi ve fiyatı varsa riskteki parayı da hesaplarız. Geçmiş ne kadar uzunsa tahmin o kadar sağlam olur; verinizin yeterli olup olmadığını pilotta birlikte kontrol ederiz.</p></details>
+      <details><summary>Kurulum nasıl oluyor?</summary><p class="ans">Ritmeva bir <b>Docker paketi</b> (tek parça kurulan yazılım kutusu) olarak sunucunuza kurulur ve her gece kendiliğinden çalışır. Giriş kayıtlarını verirsiniz, her üye için ihtimal, gerekçe ve tutar alırsınız. Takvimi sizin altyapınıza göre birlikte planlarız.</p></details>
+      <details><summary>Stüdyolarımız yeni bir uygulama öğrenecek mi?</summary><p class="ans">Hayır. Riskli üye listesi <b>sizin panelinizde, sizin markanızla</b> görünür. Stüdyo sahibi alıştığı ekranda yeni bir liste görür, o kadar.</p></details>
+      <details><summary>Fiyatı ne kadar?</summary><p class="ans">Pilot <b>ücretsiz</b>. Sonrası, Ritmeva'nın açık olduğu stüdyo başına <b>sabit aylık lisans</b>; ister eklenti olarak satarsınız, ister bir paketinize dahil edersiniz. Fiyat listesini görüşmede paylaşırız. Stüdyonuz ayda tek bir üyeyi geri kazansa bile eklenti kendini birkaç kat öder.</p></details>
+      <details><summary>Arkasında kim var?</summary><p class="ans">Ritmeva, <b>olasılık modelleri üzerine çalışan bir matematikçi</b> tarafından kuruldu. Modelin bütün matematiği ayrıntılı bir teknik raporla GitHub'da açık; her formülü görüşmede birlikte inceleyebiliriz. Ürün, bakım istemeden kendi başına çalışacak şekilde tasarlandı.</p></details>
+    </div>
+  </div>
+</section>
+
+<section class="block cta" id="pilot">
+  <div class="wrap">
+    <div class="box rv">
+      <p class="kicker">15 dakika</p>
+      <h2>Stüdyolarınız için ne göstereceğini birlikte görelim.</h2>
+      <p>Canlı demoyu birlikte açarız, pilot için gereken veriyi netleştiririz. Uymuyorsa açıkça söyleriz.</p>
+      {% if pilot_takvim_adresi %}
+      <a class="btn btn-primary" href="{{ pilot_takvim_adresi }}" target="_blank" rel="noopener">Takvimden saat seç <span class="arrow" aria-hidden="true">→</span></a>
+      {% else %}
+      <a class="btn btn-primary" href="/giris">Canlı demoyu aç <span class="arrow" aria-hidden="true">→</span></a>
+      <p class="soon">Görüşme takvimi çok yakında burada.</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap row">
+    <a class="logo" href="#top" style="font-size:19px"><svg aria-hidden="true"><use href="#mark"/></svg>ritmeva</a>
+    <span>Tüm örnek sayılar sentetik veriden gelir.</span>
+    <a href="/giris">Canlı demo</a>
+    <a href="https://github.com/huseyinayt34/panosu" target="_blank" rel="noopener">GitHub</a>
+  </div>
+  <div class="giant" aria-hidden="true"><span>r</span><span>i</span><span>t</span><span>m</span><span class="hot">e</span><span>v</span><span>a</span></div>
+</footer>
+
+<script src="/statik/vendor/three.min.js"></script>
+<script src="/statik/tanitim.js"></script>
+</body>
+</html>

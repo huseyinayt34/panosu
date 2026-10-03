@@ -192,15 +192,10 @@ def _ust_bilgi(db: Session, kimlik: Kimlik) -> dict:
 # Uçlar
 # ---------------------------------------------------------------------------------------------
 @router.get("/")
-def kok(request: Request, db: Session = Depends(get_db)):
-    try:
-        oturum = web_kimligi(request, db)
-    except WebKesinti as k:
-        return k.yanit if _htmx_mi(request) else _yonlendir("/giris")
-    yanit = _yonlendir("/pano")
-    if oturum.yeni_cift is not None:
-        _cerezleri_yaz(yanit, oturum.yeni_cift)
-    return yanit
+def kok(request: Request) -> Response:
+    """K53: public landing page. No session, no database, no cookie; the demo starts at /giris."""
+    return sablonlar.TemplateResponse(request, "web/tanitim.html",
+                                      {"pilot_takvim_adresi": ayarlar.pilot_takvim_adresi})
 
 
 @router.get("/giris")

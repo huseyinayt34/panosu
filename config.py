@@ -34,12 +34,27 @@ class Ayarlar(BaseSettings):
     # Kamuya açık demo girişi (K26): ikisi de tanımlıysa giriş formu dolu gelir. Parola koda yazılmaz.
     demo_giris_eposta: str | None = None
     demo_giris_parola: SecretStr | None = None
+    # Public landing page calendar link (K56): optional, https only; unset shows the demo button instead.
+    pilot_takvim_adresi: str | None = None
 
     @field_validator("jwt_gizli")
     @classmethod
     def _jwt_gizli_yeterli(cls, deger: SecretStr) -> SecretStr:
         if len(deger.get_secret_value().encode()) < JWT_GIZLI_EN_AZ_BAYT:
             raise ValueError(f"PANOSU_JWT_GIZLI en az {JWT_GIZLI_EN_AZ_BAYT} bayt olmalı")
+        return deger
+
+    @field_validator("pilot_takvim_adresi")
+    @classmethod
+    def _pilot_takvim_https(cls, deger: str | None) -> str | None:
+        """K56: empty means unset; anything else must be an https link. The error does not echo the value."""
+        if deger is None:
+            return None
+        deger = deger.strip()
+        if not deger:
+            return None
+        if not deger.startswith("https://"):
+            raise ValueError("PANOSU_PILOT_TAKVIM_ADRESI must start with https://")
         return deger
 
     @model_validator(mode="after")

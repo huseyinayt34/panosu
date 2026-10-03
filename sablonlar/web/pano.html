@@ -1,5 +1,5 @@
 {% extends "web/taban.html" %}
-{% block baslik %}{{ isletme_adi }} · Panosu{% endblock %}
+{% block baslik %}{{ isletme_adi }} · Ritmeva{% endblock %}
 {% block bas %}<script src="/statik/htmx.min.js" defer></script>{% endblock %}
 {% block govde_nitelikleri %} hx-headers='{{ {"X-CSRF-Token": csrf} | tojson }}'{% endblock %}
 {% block icerik %}

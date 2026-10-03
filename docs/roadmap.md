@@ -26,6 +26,7 @@ below is a snapshot as of 2026-10-03; the current status lives in CLAUDE.md.
 | 11 | Deployment: Docker, CI, server, strong and distinct passwords, payments (`docs/adim-11-tasarim.md`) | Done (minimum release 2026-10-02: https://panosu.onrender.com; payments later) |
 | — | Model fix (μ, κ): MAP, weak prior, central difference, two starts (`docs/adim-mu-kappa-tasarim.md`) | Done |
 | — | Math report: model, MAP and weak identifiability, simulation, validation, limitations (`docs/matematik-raporu.md`) | Done |
+| — | Ritmeva brand + public landing page (`docs/adim-ritmeva-tasarim.md`) | Done |
 
 ## Development ideas (not decisions; designed in the relevant step)
 - Step 4b: AI-suggested CSV column mapping; extracting a table from a photo of the attendance book.

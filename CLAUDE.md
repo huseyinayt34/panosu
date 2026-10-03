@@ -33,7 +33,8 @@ main.py → rotalar/ → (bagimliliklar.py, servisler/, semalar/) → models.py 
 - `backtest/`: model comparison on synthetic scenarios S0-S6; no database.
 - `sentetik/`: synthetic data, demo setup, refresh and export; writes only to databases ending in `_demo`.
 - `sablonlar/` (Jinja2), `statik/` (htmx, `panel.css`; keep `panel.css`: the uptime monitor and the Render health
-  check request it).
+  check request it). Landing page `web/tanitim.html` + `statik/tanitim.css`/`tanitim.js`; vendored three.js in
+  `statik/vendor/`, self-hosted fonts in `statik/yazitipi/` (no CDN, K55).
 - `Dockerfile`, `requirements-uretim.txt` (runtime deps; update on a new runtime import),
   `.github/workflows/` (`demo-tazele.yml` nightly, `demo-kur.yml` manual with confirm word "KUR").
 Module detail: `docs/commands.md` and the step docs `docs/adim-*.md`.
@@ -100,6 +101,7 @@ research shelf: `docs/roadmap.md`. Math decisions (model choice, assumptions) be
 | 11 | Deployment (`docs/adim-11-tasarim.md`) | Done (live 2026-10-02; payments later) |
 | - | Model fix (μ, κ): MAP, weak prior, two starts (`docs/adim-mu-kappa-tasarim.md`) | Done |
 | - | Math report: model, MAP, validation, limitations (`docs/matematik-raporu.md`) | Done |
+| - | Ritmeva brand + public landing page (`docs/adim-ritmeva-tasarim.md`) | Done |
 
 ## Open issues (Açık konular)
 - After the (μ, κ) fix (`docs/adim-mu-kappa-tasarim.md` section 4): tune prior centers (`analitik.bgnbd` ONSEL_*)

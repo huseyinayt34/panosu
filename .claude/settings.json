@@ -10,7 +10,9 @@
       "Read(./veri/**)",
       "Read(./raporlar/**/*.html)",
       "Read(./raporlar/**/*.csv)",
-      "Read(./statik/htmx.min.js)"
+      "Read(./statik/htmx.min.js)",
+      "Read(./statik/vendor/**)",
+      "Read(./statik/yazitipi/**)"
     ]
   }
 }
