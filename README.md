@@ -72,7 +72,7 @@ Docker imajı **Render**'da (Frankfurt) çalışır; veritabanı **Neon** Postgr
 
 ## Modeller
 
-Ayrıntılı türetmeler ve varsayımlar ayrı bir **matematik raporunda** anlatılacak (hazırlanıyor). Kısa özet:
+Ayrıntılı türetmeler, varsayımlar, doğrulama ve bilinen sınırlar **matematik raporunda**: `docs/matematik-raporu.md`. Kısa özet:
 
 **MBG/NBD (Batislam, Denizel & Filiztekin, 2007).** Hayattaki bir müşteri ziyaretlerini Poisson($\lambda$) süreciyle yapar; ilk ziyaret dahil her ziyaretten sonra $p$ olasılıkla bırakır. Müşteriler arası farklılık $\lambda \sim \text{Gamma}(r, \alpha)$ ve $p \sim \text{Beta}(a, b)$ ile modellenir; parametreler her işletmenin kendi verisinden en büyük sonsal (MAP) ile kestirilir: zayıf tanımlanan iki yön ($\kappa = a+b$ ve $r$) zayıf log-normal önselle sabitlenir; ayrıntı `docs/adim-mu-kappa-tasarim.md`. $x$ tekrar ziyaret sayısı, $t_x$ son ziyaretin zamanı, $T$ gözlem süresi olmak üzere:
 

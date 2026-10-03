@@ -133,6 +133,7 @@ gösterecek şekilde `alembic upgrade head`.
 | 10 | İzin, mesaj, geri kazanım ölçümü | Planlandı |
 | 11 | Yayına alma: Docker, CI, sunucu, güçlü ve farklı parolalar, ödeme (`docs/adim-11-tasarim.md`) | Tamam (minimum yayın 2026-10-02: https://panosu.onrender.com; ödeme sonraya) |
 | — | Model düzeltmesi (μ, κ): MAP, zayıf önsel, merkezi fark, iki başlangıç (`docs/adim-mu-kappa-tasarim.md`) | Tamam |
+| — | Matematik raporu: model, MAP ve zayıf tanımlanabilirlik, simülasyon, doğrulama, sınırlar (`docs/matematik-raporu.md`) | Tamam |
 
 Geliştirme fikirleri (karar değil; ilgili adımda tasarlanacak):
 - Adım 4b: yapay zekâ ile CSV sütun eşleme önerisi; yoklama defteri fotoğrafından tablo çıkarma.
