@@ -7,6 +7,10 @@ Amaç: hangi müşterinin kaybedilmek üzere olduğunu (churn) olasılıksal ola
 
 ## Canlı demo
 
+**Tanıtım videosu (1,5 dk, sentetik veri):**
+
+https://github.com/user-attachments/assets/a7a678b3-f1ee-490c-8329-cbf29dcf5044
+
 Ana adres **https://panosu.onrender.com** tanıtım sayfasıdır. Demo girişi: **https://panosu.onrender.com/giris**
 
 - Giriş formu demo hesabıyla dolu gelir; **Giriş**'e basmanız yeterli. Ardından bir **[DEMO]** işletme seçin; en zengin örnekler **Butik Reformer** ve **Denge Pilates Stüdyosu**.
@@ -15,7 +19,7 @@ Ana adres **https://panosu.onrender.com** tanıtım sayfasıdır. Demo girişi: 
 - Demo **salt okunurdur**: veri değiştiren istekler `403` döner.
 - Ücretsiz sunucu boştayken uyur; ilk açılış **30–60 saniye** sürebilir.
 
-> Durum: Portföy sürümü yayında. Backend, modeller, web paneli ve canlı demo tamam. Sıradaki: modelleri ayrıntılı anlatan matematik raporu ve tanıtım videosu.
+> Durum: Portföy sürümü yayında. Backend, modeller, web paneli, canlı demo, matematik raporu (`docs/matematik-raporu.md`) ve tanıtım videosu tamam. Sıradaki: ilk pilot ile gerçek veride doğrulama.
 
 ---
 
@@ -202,11 +206,11 @@ python -m backtest                                   # model karşılaştırmas�
 
 ## Yol haritası
 
-Tamamlanan: çok kiracılı şema ve RLS, Alembic, müşteri/hizmet/ziyaret/paket API'si, sentetik veri motoru, model kütüphanesi ve backtest, yenileme riski ve Riskteki Para, finans paneli ve haftalık rapor, gerçek kimlik doğrulama, web paneli, canlı demo.
+Tamamlanan: çok kiracılı şema ve RLS, Alembic, müşteri/hizmet/ziyaret/paket API'si, sentetik veri motoru, model kütüphanesi ve backtest, yenileme riski ve Riskteki Para, finans paneli ve haftalık rapor, gerçek kimlik doğrulama, web paneli, canlı demo, komut satırından CSV içe aktarma, kesin yenileme formülü, matematik raporu ve tanıtım videosu.
 
-Sıradaki: matematik raporu ve tanıtım videosu. Sonra (gerçek veri gerektirenler): CSV içe aktarma, yenileme modelinin gerçek veriyle kalibrasyonu, az verili işletmeler için soğuk başlangıç (Bayesçi önsel), izin/mesaj ve geri kazanım ölçümü.
+Sıradaki (gerçek veri gerektirenler): ilk pilot ile gerçek veride doğrulama, yenileme modelinin gerçek veriyle kalibrasyonu, web üzerinden CSV yükleme, az verili işletmeler için soğuk başlangıç (Bayesçi önsel), izin/mesaj ve geri kazanım ölçümü.
 
-Ayrıntılı yol haritası: `CLAUDE.md`.
+Ayrıntılı yol haritası: `docs/roadmap.md`.
 
 ---
 
