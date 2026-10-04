@@ -115,3 +115,34 @@ def test_ozellik_carpanlar_ve_pay_araligi():
             assert Decimal(0) <= a.sessizlik_payi <= Decimal(1)
         if a.p_surdurme is not None and p_yen <= p_aktif:
             assert abs(a.p_aktif * a.p_surdurme - p_yen) <= Decimal("0.0002")
+
+
+def test_sessiz_uye_simdi_duzenli_denmez():
+    """K60 regression (demo 2026-10-04, Butik Reformer): absent 66 days, p_aktif 0.0002, Monte Carlo gave
+    p_yenileme 0 → q 0 → B = ∞ and the reason said "Şu an düzenli geliyor". Silence must be the reason."""
+    a = _aciklama(p_hayatta_simdi=Decimal("0.0002"), p_yenileme=Decimal("0"), son_ziyaret=HESAP - timedelta(days=66),
+                  ilk_ziyaret=HESAP - timedelta(days=300), ziyaret_sayisi=40, kalan_gun=5)
+    assert a.ana_neden == "sessizlik"
+    assert "66 gündür gelmiyor" in a.cumle
+    assert "Şu an düzenli" not in a.cumle
+
+
+def test_kalan_sure_nedeni_yalniz_aktif_sayilan_uyede():
+    """K60: B > A but p_aktif < 0.5 → silence; at p_aktif = 0.5 the remaining-time reason is allowed."""
+    for p_aktif, p_yen, beklenen in (("0.30", "0.02", "sessizlik"), ("0.49", "0.01", "sessizlik"),
+                                     ("0.50", "0.10", "uzun_sure")):
+        a = _aciklama(p_hayatta_simdi=Decimal(p_aktif), p_yenileme=Decimal(p_yen))
+        assert a.ana_neden == beklenen, p_aktif
+    b = _aciklama(p_hayatta_simdi=Decimal("0.30"), p_yenileme=Decimal("0.02"), tur="giris", kalan_gun=None,
+                  kalan_giris=6)
+    assert b.ana_neden == "sessizlik"
+
+
+def test_ozellik_simdi_duzenli_yalniz_aktif_sayilan_uyede():
+    rng = random.Random(20261004)
+    for _ in range(300):
+        p_aktif = Decimal(str(round(rng.uniform(0, 1), 4)))
+        p_yen = Decimal(str(round(rng.uniform(0, 0.7999), 4))) * rng.choice([0, 1])
+        a = _aciklama(p_hayatta_simdi=p_aktif, p_yenileme=p_yen, tur=rng.choice(["sure", "giris"]), kalan_giris=3)
+        if a.cumle.startswith("Şu an düzenli"):
+            assert a.p_aktif >= Decimal("0.5")

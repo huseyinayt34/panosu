@@ -4,6 +4,8 @@ K6 Riskin iki çarpana ayrılması: P(yenileme) = P(aktif şimdi) × P(sürdürm
    p_aktif = p_hayatta_simdi; q = min(p_yenileme / p_aktif, 1) (p_aktif = 0 ise q tanımsız).
    A = −ln p_aktif, B = −ln q; −ln P(yenileme) = A + B; sessizlik_payi = A / (A + B).
    A ≥ B → ana neden sessizlik; B > A → ana neden kalan süre (süre bazlı) / kalan hak (giriş bazlı).
+   K60 (2026-10-04): kalan süre / kalan hak cümlesi "Şu an düzenli geliyor" der; yalnızca p_aktif ≥ SESSIZ_ESIK
+   ise seçilir, değilse ana neden sessizliktir (panelin "sessiz üye" tanımıyla aynı eşik).
 K7 Normal aralık m = (son ziyaret − ilk ziyaret) / (ziyaret sayısı − 1); sessiz gün s = hesaplama günü − son ziyaret;
    kat k = s / m. Aktif üyede s gün hiç gelmeme olasılığı ≈ e^(−k). "Normal aralık" yalnızca en az 4 ziyaret varsa
    söylenir (ortalamanın göreli hatası ≈ 1/√(n−1)).
@@ -26,6 +28,10 @@ NORMAL_ARALIK_MIN_ZIYARET = 4
 # ~2000·p_aktif "aktif" çekilişten tahmin edilir; %5'te ~100 çekiliş, standart hata en fazla ~5 puan (proje sahibi
 # kararı, 2026-10-02).
 AYRISTIRMA_MIN_P_AKTIF = Decimal("0.05")
+# K60: below this P(active now) the member counts as silent (panel "sessiz üyeler" list), so the reason sentence
+# must not say "Şu an düzenli geliyor". Also guards against q = 0 from Monte Carlo when p_aktif ≈ 0
+# (2000·p_aktif ≈ 0 active draws → p_yenileme = 0 → B = ∞ would wrongly pick the remaining-time reason).
+SESSIZ_ESIK = Decimal("0.5")
 
 
 @dataclass(frozen=True)
@@ -89,7 +95,7 @@ def neden_riskli(*, p_hayatta_simdi: Decimal, p_yenileme: Decimal, ziyaret_sayis
         pay = Decimal(str(a / (a + b)))
     sessizlik_payi = _yuvarla(pay, 2)
 
-    if a >= b:
+    if a >= b or p_aktif < SESSIZ_ESIK:
         if m is None:
             son = "son ziyareti hesaplama gününde" if sessiz_gun == 0 else f"son ziyaret {sessiz_gun} gün önce"
             return sonuc("az_gecmis", f"Yalnızca {ziyaret_sayisi} kez geldi; {son}. "

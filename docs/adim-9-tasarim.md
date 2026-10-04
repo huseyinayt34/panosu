@@ -77,6 +77,10 @@ tek satırla özetlenir. Olasılıklar <%1 / >%99 biçiminde; p_aktif < %5 iken 
 p_aktif = p_hayatta_simdi; q = min(p_yenileme / p_aktif, 1) (p_aktif = 0 ise q tanımsız).
 A = −ln p_aktif, B = −ln q; −ln P(yenileme) = A + B. sessizlik_payi = A / (A + B).
 A ≥ B → ana neden sessizlik; B > A → ana neden kalan süre (süre bazlı) / kalan hak (giriş bazlı).
+**K60 (2026-10-04) addendum to K6:** the remaining-time / remaining-entries sentence starts with "Şu an düzenli
+geliyor", so it is chosen only when p_aktif ≥ 0.5 (the same threshold as the panel's silent-members list); below that
+the main reason is silence. Found in the demo: a member absent 66 days (p_aktif 0.0002) got p_yenileme 0 from the
+Monte Carlo (≈0.4 active draws out of 2,000), so q = 0, B = ∞ and the old rule picked the remaining-time sentence.
 
 **K7 Normal aralık:** m = (son ziyaret günü − ilk ziyaret günü) / (ziyaret sayısı − 1); sessiz gün s = hesaplama günü −
 son ziyaret günü; kat k = s / m. Aktif üyede s gün hiç gelmeme olasılığı ≈ e^(−k). "Normal aralık" yalnızca en
@@ -116,10 +120,10 @@ geliyor; belirgin bir risk yok." (gösterim eşiği).
 |---|---|---|
 | `dusuk_risk` | P(yenileme) ≥ 0,80 | Düzenli geliyor; belirgin bir risk yok. |
 | `hic_gelmedi` | ziyaret yok | Paketi {tarih} tarihinde aldı, o günden beri hiç gelmedi ({gün} gün). |
-| `az_gecmis` | A ≥ B ve (ziyaret < 4 veya m = 0) | Yalnızca {n} kez geldi; son ziyaret {s} gün önce (s = 0: son ziyareti hesaplama gününde). Geçmiş az, tahmin belirsiz. |
-| `sessizlik` | A ≥ B, ziyaret ≥ 4 | Normalde ~{m} günde bir geliyor; {s} gündür gelmiyor (normalin {k} katı). |
-| `uzun_sure` | B > A, süre bazlı | Şu an düzenli geliyor; risk, paketin bitmesine kalan {gün} günde bırakma ihtimalinden. |
-| `kalan_hak` | B > A, giriş bazlı | Şu an düzenli geliyor; risk, kalan {n} giriş hakkını kullanırken bırakma ihtimalinden. |
+| `az_gecmis` | (A ≥ B veya p_aktif < 0,5) ve (ziyaret < 4 veya m = 0) | Yalnızca {n} kez geldi; son ziyaret {s} gün önce (s = 0: son ziyareti hesaplama gününde). Geçmiş az, tahmin belirsiz. |
+| `sessizlik` | (A ≥ B veya p_aktif < 0,5), ziyaret ≥ 4 | Normalde ~{m} günde bir geliyor; {s} gündür gelmiyor (normalin {k} katı). |
+| `uzun_sure` | B > A ve p_aktif ≥ 0,5, süre bazlı | Şu an düzenli geliyor; risk, paketin bitmesine kalan {gün} günde bırakma ihtimalinden. |
+| `kalan_hak` | B > A ve p_aktif ≥ 0,5, giriş bazlı | Şu an düzenli geliyor; risk, kalan {n} giriş hakkını kullanırken bırakma ihtimalinden. |
 
 - p_aktif = 0 → A = ∞ (sessizlik ailesi, p_surdurme yok); q = 0 → B = ∞ (sessizlik_payi 0).
 - Neden hücresinin altında (dusuk_risk ve hic_gelmedi dışında) gri satır: "Aktif olma … · bitişe kadar sürdürme … →

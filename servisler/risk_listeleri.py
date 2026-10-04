@@ -16,13 +16,12 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from analitik.aciklama import DUSUK_RISK_ESIGI, neden_riskli
+from analitik.aciklama import DUSUK_RISK_ESIGI, SESSIZ_ESIK, neden_riskli
 from models import Isletme, MusteriPaketi, YenilemeRiski, Ziyaret
 from servisler.finans_servisi import PANEL_UFUK_GUN
 from servisler.yenileme_servisi import _gozlem_sonu, isletme_bugun, sessiz_uyeler, yenileme_paneli
 
 TABLO_SATIRI = 10
-SESSIZ_ESIK = Decimal("0.5")
 
 
 @dataclass
