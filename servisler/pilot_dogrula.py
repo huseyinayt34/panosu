@@ -156,12 +156,14 @@ def dogrulama_csv(d: pilot.Dogrulama) -> str:
 
 
 def skorlar_csv(g: pilot.GuncelListe) -> str:
+    """Today's list; also the output of `servisler.skor`. Data day and model version on every row (K78)."""
     return _csv([[s.paket.uye_kimlik, s.paket.dis_kimlik, s.paket.ad,
                   s.paket.bitis_tarihi.strftime("%d.%m.%Y") if s.paket.bitis_tarihi else "",
                   _sayi(s.kalan_gun), _sayi(s.kalan_giris), _sayi(s.p_hayatta_simdi), _sayi(s.p_yenileme),
-                  _sayi(s.riskteki_para), s.aciklama.cumle] for s in g.skorlar],
+                  _sayi(s.riskteki_para), s.aciklama.cumle, g.gun.strftime("%d.%m.%Y"), g.model_versiyonu]
+                 for s in g.skorlar],
                 ["Üye No", "Paket No", "Paket Adı", "Bitiş Tarihi", "Kalan Gün", "Kalan Giriş", "Aktif Olasılığı",
-                 "Yenileme Olasılığı", "Riskteki Para", "Neden"])
+                 "Yenileme Olasılığı", "Riskteki Para", "Neden", "Veri Günü", "Model Sürümü"])
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -208,8 +210,8 @@ def main(argv: list[str] | None = None) -> None:
 
     cikti.mkdir(parents=True, exist_ok=True)
     (cikti / "pilot-raporu.html").write_text(rapor_html(d, g, arg.ad or arg.kaynak), encoding="utf-8")
-    (cikti / "dogrulama.csv").write_text(dogrulama_csv(d), encoding="utf-8-sig")
-    (cikti / "skorlar.csv").write_text(skorlar_csv(g), encoding="utf-8-sig")
+    (cikti / "dogrulama.csv").write_text(dogrulama_csv(d), encoding="utf-8-sig", newline="")
+    (cikti / "skorlar.csv").write_text(skorlar_csv(g), encoding="utf-8-sig", newline="")
     (cikti / "esleme.json").write_text(json.dumps({"paketler": es_p, "girisler": es_g}, ensure_ascii=False,
                                                   indent=2), encoding="utf-8")
 

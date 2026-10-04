@@ -12,7 +12,7 @@ yoktur; söz değil, yol haritasıdır.
 |---|---|
 | Dosya okuma kuralları (CSV/XLSX, sütun eşleştirme, tarih/para ayrıştırma) | Çalışıyor |
 | Pilot doğrulama komutu (`servisler.pilot_dogrula`): doğruluk raporu + bugünkü risk listesi, veritabanı yok | Çalışıyor |
-| Skor komutu: yalnızca "dosya girer, risk listesi çıkar", düzenli çalıştırmaya uygun | **Planlanan** |
+| Skor komutu (`servisler.skor`): yalnızca "dosya girer, risk listesi çıkar", düzenli çalıştırmaya uygun | Çalışıyor |
 | Firmanın sunucusuna kurulan Docker lisans paketi | **Planlanan** |
 
 ## 1. Akış
@@ -107,7 +107,7 @@ Dosyada isim, telefon ya da e-posta sütunu yoktur. Olsa bile okunmaz (Bölüm 3
 ## 3. Kişisel veri ve KVKK
 
 - **Ritmeva sizin sunucunuzda çalışacak şekilde tasarlandı.** Dosyalar sizin makinenizde okunur, sonuç sizin
-  makinenize yazılır; bugün bu, pilot komutunu kendi makinenizde çalıştırdığınızda geçerlidir (sunucu paketi
+  makinenize yazılır; bugün bu, pilot ya da skor komutunu kendi makinenizde çalıştırdığınızda geçerlidir (sunucu paketi
   planlanan, Bölüm 9). Bu yolda üye verisi bize gönderilmez. Veri sorumlusu (KVKK) sizsiniz ve öyle kalırsınız.
 - **Dosyaları bize gönderirseniz** (pilotta ikinci yol, Bölüm 7): isimsiz ve kodları değiştirilmiş veri de, siz
   kodları geri eşleyebildiğiniz sürece KVKK'da kişisel veri sayılabilir (takma ad, anonim değildir). Bu durumda biz
@@ -137,6 +137,8 @@ paket; dondurulmuş paketler sayılır ama skorlanmaz. Satırlar Riskteki Para'y
 | Yenileme Olasılığı | P(yenileme): üyenin paketi bittiğinde yenileme olasılığı (0-1, 4 ondalık) |
 | Riskteki Para | (1 − P(yenileme)) × paket ücreti, kuruşa yuvarlanmış. Bu üyede kaybetme riski olan beklenen tutar |
 | Neden | Tek cümlelik, sayıya dayalı açıklama |
+| Veri Günü | Hesabın yapıldığı gün: verideki son girişin tarihi. Eski bir dışa aktarmayı bu sütundan anlarsınız |
+| Model Sürümü | Hesabı yapan model sürümü (Bölüm 6) |
 
 "Neden" cümlesinin biçimleri:
 - "Normalde ~7 günde bir geliyor; 24 gündür gelmiyor (normalin 3,4 katı)."
@@ -166,8 +168,18 @@ Model her çalıştırmada o stüdyonun **kendi verisinden** yeniden kurulur (st
 üyenin sessizliği her gün uzar) haftalık çalıştırma geç kalabilir; gün içinde birden çok çalıştırma ise sonucu
 anlamlı biçimde değiştirmez. Zamanlama (cron, Windows Görev Zamanlayıcı) sizin tarafınızdadır.
 
-Bugün bu düzenli çalıştırma için pilot komutu kullanılabilir, ama o komut her seferinde doğrulama raporunu da
-üretir. Yalnızca listeyi üreten hafif **skor komutu planlanandır**.
+Düzenli çalıştırma için skor komutu kullanılır. Doğrulama raporu üretmez, yalnızca `skorlar.csv` yazar; aynı
+dosyalarla pilot komutunun `skorlar.csv` dosyasıyla bire bir aynıdır.
+
+```powershell
+python -m servisler.skor --kaynak stuvio --paketler paketler.csv --girisler girisler.csv --cikti C:\ritmeva\skorlar.csv
+```
+
+- Dosya önce geçici bir adla yazılır, sonra tek adımda eskisinin yerine konur; okuyan sistem yarım bir liste görmez.
+- Hata olursa (eşleştirme hatası: çıkış kodu 2; satırların %10'undan fazlası hatalı: çıkış kodu 1) yeni dosya
+  yazılmaz, dünkü liste yerinde kalır. Zamanlayıcınız çıkış kodunu izleyebilir.
+- Son giriş 2 günden eskiyse komut "dışa aktarma güncel mi?" uyarısı yazar ama listeyi yine üretir.
+- `--kaynak` pilotta kullandığınız adla aynı olmalıdır; paket numarası olmayan dosyalarda Paket No bu adla türetilir.
 
 ## 6. Model sürümü
 
@@ -179,8 +191,8 @@ Model sürümü bir sürüm adıyla izlenir; şu anki sürüm **`mbgnbd-map-v3`*
 - Aynı veri ve aynı sürümle çalıştırma her seferinde bit bit aynı sonucu verir (girdi sırası önemsizdir).
 - Sürüm değişiklikleri depodaki tasarım belgelerinde gerekçesiyle kayıtlıdır.
 
-Planlanan: skor komutu ve Docker paketi, sürüm adını her çıktıya yazacak ve bir sürüm değişikliği önceden
-duyurulacak. Bugünkü pilot çıktısında (`skorlar.csv`) sürüm sütunu yoktur.
+`skorlar.csv` dosyasının her satırında sürüm adı yazar (`Model Sürümü` sütunu; hem skor hem pilot komutunda). Bir
+sürüm değişikliği önceden duyurulacaktır.
 
 ## 7. Önce pilot
 
@@ -221,9 +233,7 @@ Kaynak kodu okunabilir ve değerlendirme için kendi bilgisayarınızda çalış
 
 ## 9. Planlananlar (henüz yok)
 
-- **Skor komutu:** paket ve giriş dosyası girer, yalnızca `skorlar.csv` çıkar; doğrulama raporu üretmez, gece
-  çalıştırmaya uygun, çıktıda model sürümü.
 - **Docker lisans paketi:** skor komutunu sizin sunucunuzda tek imajla çalıştırmak için; Python kurulumu gerekmez.
 - **Gerçek veriyle kalibrasyon:** ilk pilotların yenileme verisiyle yenileme olasılığının ayarlanması.
 
-Bu üçü hazır olduğunda bu belge güncellenecektir.
+Bu ikisi hazır olduğunda bu belge güncellenecektir.

@@ -20,7 +20,7 @@ from sqlalchemy import text
 
 from backtest.senaryolar import GOZLEM_GUN, S6_GIRIS_SON_KULLANMA, S6_PAKETLER, uret_s6
 from servisler import ice_aktarma as ia
-from servisler import pilot, pilot_dogrula
+from servisler import pilot, pilot_dogrula, skor
 
 IST = ZoneInfo("Europe/Istanbul")
 KOK = Path(__file__).resolve().parent.parent
@@ -204,7 +204,7 @@ def test_komut_ciktilari_ve_kisisel_sutun_okunmaz(tmp_path, s6, capsys):
         assert not any(deger in m for m in metinler)
     assert (cikti / "skorlar.csv").read_text(encoding="utf-8-sig").splitlines()[0] == (
         "Üye No;Paket No;Paket Adı;Bitiş Tarihi;Kalan Gün;Kalan Giriş;Aktif Olasılığı;Yenileme Olasılığı;"
-        "Riskteki Para;Neden")
+        "Riskteki Para;Neden;Veri Günü;Model Sürümü")
     html = (cikti / "pilot-raporu.html").read_text(encoding="utf-8")
     assert "Deneme Stüdyo · pilot raporu" in html and "Ayırt etme gücü" in html
 
@@ -235,6 +235,53 @@ def test_komut_veritabani_ve_ayar_dosyasi_gerektirmez():
     """The firm runs it without .env and PostgreSQL: importing the command must not import database/config."""
     ortam = {k: v for k, v in os.environ.items() if not k.startswith("PANOSU_")}
     kod = ("import sys, servisler.pilot_dogrula; "
+           "assert not {'database', 'config', 'models', 'sqlalchemy'} & set(sys.modules), sorted(sys.modules)")
+    subprocess.run([sys.executable, "-c", kod], cwd=KOK, env=ortam, check=True)
+
+
+# ---------------------------------------------------------------------------------------------
+# Score command (K76-K80)
+# ---------------------------------------------------------------------------------------------
+def _skor_komutu(tmp_path, s6, *ek, paket_satirlari=None, paket_basligi=None, girisler=None) -> Path:
+    (tmp_path / "paketler.csv").write_bytes(_csv_bayt(paket_basligi or PAKET_BASLIK,
+                                                      paket_satirlari or s6["paketler"]))
+    (tmp_path / "girisler.csv").write_bytes(_csv_bayt(["Üye No", "Giriş Tarihi"], girisler or s6["girisler"]))
+    cikti = tmp_path / "gece" / "skorlar.csv"
+    skor.main(["--kaynak", "deneme", "--paketler", str(tmp_path / "paketler.csv"),
+               "--girisler", str(tmp_path / "girisler.csv"), "--cikti", str(cikti), *ek])
+    return cikti
+
+
+def test_skor_komutu_pilot_listesiyle_ayni_ve_surum_yazar(tmp_path, s6, capsys):
+    baslik = PAKET_BASLIK + ["Ad Soyad", "TC Kimlik No", "Telefon"]
+    satirlar = [r + ["Zeynep Örnekoğlu", "12345678901", "0532 111 22 33"] for r in s6["paketler"]]
+    cikti = _skor_komutu(tmp_path, s6, paket_satirlari=satirlar, paket_basligi=baslik)
+    assert sorted(p.name for p in cikti.parent.iterdir()) == ["skorlar.csv"]
+    metin, cikis = cikti.read_text(encoding="utf-8-sig"), capsys.readouterr().out
+    for deger in ("Zeynep", "12345678901", "0532"):
+        assert deger not in metin and deger not in cikis
+    satirlar_csv = list(csv.reader(io.StringIO(metin), delimiter=";"))
+    assert len(satirlar_csv) > 1
+    L = pilot.veri_gunu(_kayitlar(s6)[0], IST)
+    assert {(r[-2], r[-1]) for r in satirlar_csv[1:]} == {(L.strftime("%d.%m.%Y"), "mbgnbd-map-v3")}
+    pilot_cikti = _komut(tmp_path, s6, paket_satirlari=satirlar, paket_basligi=baslik)
+    assert cikti.read_bytes() == (pilot_cikti / "skorlar.csv").read_bytes()
+
+
+def test_skor_komutu_hatada_onceki_listeyi_korur(tmp_path, s6):
+    cikti = _skor_komutu(tmp_path, s6)
+    onceki = cikti.read_bytes()
+    girisler = [r if i % 8 else [r[0], "31.13.2025"] for i, r in enumerate(s6["girisler"])]   # 12.5% invalid
+    with pytest.raises(SystemExit) as hata:
+        _skor_komutu(tmp_path, s6, girisler=girisler)
+    assert hata.value.code == 1
+    assert cikti.read_bytes() == onceki
+    assert [p.name for p in cikti.parent.iterdir()] == ["skorlar.csv"]
+
+
+def test_skor_komutu_veritabani_ve_ayar_dosyasi_gerektirmez():
+    ortam = {k: v for k, v in os.environ.items() if not k.startswith("PANOSU_")}
+    kod = ("import sys, servisler.skor; "
            "assert not {'database', 'config', 'models', 'sqlalchemy'} & set(sys.modules), sorted(sys.modules)")
     subprocess.run([sys.executable, "-c", kod], cwd=KOK, env=ortam, check=True)
 
