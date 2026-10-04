@@ -34,7 +34,8 @@ main.py → rotalar/ → (bagimliliklar.py, servisler/, semalar/) → models.py 
 - `sentetik/`: synthetic data, demo setup, refresh and export; writes only to databases ending in `_demo`.
 - `sablonlar/` (Jinja2), `statik/` (htmx, `panel.css`; keep `panel.css`: the uptime monitor and the Render health
   check request it). Landing page `web/tanitim.html` + `statik/tanitim.css`/`tanitim.js`; vendored three.js in
-  `statik/vendor/`, self-hosted fonts in `statik/yazitipi/` (no CDN, K55).
+  `statik/vendor/`, self-hosted fonts in `statik/yazitipi/`, promo video and share image in `statik/medya/` (no CDN,
+  K55, K74).
 - `Dockerfile`, `requirements-uretim.txt` (runtime deps; update on a new runtime import),
   `.github/workflows/` (`demo-tazele.yml` nightly, `demo-kur.yml` manual with confirm word "KUR").
 Module detail: `docs/commands.md` and the step docs `docs/adim-*.md`.

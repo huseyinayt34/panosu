@@ -221,3 +221,7 @@ Python · FastAPI · SQLAlchemy 2 · Pydantic v2 · Jinja2 · HTMX · PostgreSQL
 ## Geliştirici
 
 **Hüseyin Aytekin** — Sakarya Üniversitesi, Matematik
+
+## Lisans
+
+Kaynak kodu okunabilir ve kendi bilgisayarınızda denenebilir; ticari kullanım yazılı izne bağlıdır. Ayrıntı: [LICENSE](LICENSE). İletişim: ritmeva.iletisim@gmail.com

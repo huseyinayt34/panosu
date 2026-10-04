@@ -6,6 +6,18 @@
 <title>Ritmeva · Kaybedeceğiniz üyeyi, kaybetmeden görün</title>
 <meta name="description" content="Stüdyo yazılımlarına eklenen üye kaybı tahmin motoru: kim gidiyor, neden ve kaç lira. Sizin sunucunuzda çalışır.">
 <meta name="theme-color" content="#0b121d">
+{# K73: share card. og:url and og:image must be absolute; the image is self-hosted, so no third-party request. #}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ritmeva">
+<meta property="og:locale" content="tr_TR">
+<meta property="og:title" content="Ritmeva · Kaybedeceğiniz üyeyi, kaybetmeden görün">
+<meta property="og:description" content="Stüdyo yazılımlarına eklenen üye kaybı tahmin motoru: kim gidiyor, neden ve kaç lira. Sizin sunucunuzda çalışır.">
+<meta property="og:url" content="{{ url_for('kok') }}">
+<meta property="og:image" content="{{ url_for('statik', path='medya/ritmeva-paylasim.jpg') }}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Ritmeva: gitmek üzere olan üyeyi gitmeden gösteren erken uyarı">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 32'%3E%3Ccircle cx='16' cy='16' r='10' fill='none' stroke='%2334c3a5' stroke-width='2.4'/%3E%3Ccircle cx='6.94' cy='11.77' r='2.7' fill='%2334c3a5'/%3E%3Ccircle cx='19.42' cy='6.6' r='2.7' fill='%2334c3a5'/%3E%3Ccircle cx='11' cy='24.66' r='2.7' fill='%2334c3a5'/%3E%3Ccircle cx='29.6' cy='20.95' r='3' fill='%23f5a54a'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="/statik/tanitim.css">
 </head>
@@ -141,6 +153,18 @@
   </div>
 </section>
 
+{# K74: self-hosted promo video. preload="none": nothing is downloaded until the visitor presses play. #}
+<section class="block film" id="video">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <p class="kicker">90 saniye</p>
+      <h2>Ritmeva'yı 90 saniyede görün.</h2>
+    </div>
+    <video controls preload="none" playsinline poster="/statik/medya/ritmeva-afis.jpg" width="1920" height="1080"><source src="/statik/medya/ritmeva-tanitim.mp4" type="video/mp4"></video>
+    <p class="caption">Videodaki tüm üyeler ve tutarlar sentetik demo verisidir.</p>
+  </div>
+</section>
+
 <section class="block" id="kanit">
   <div class="wrap">
     <div class="sec-head rv">
@@ -191,7 +215,7 @@
       <details><summary>Kurulum nasıl oluyor?</summary><p class="ans">Ritmeva bir <b>Docker paketi</b> (tek parça kurulan yazılım kutusu) olarak sunucunuza kurulur ve her gece kendiliğinden çalışır. Giriş kayıtlarını verirsiniz, her üye için ihtimal, gerekçe ve tutar alırsınız. Takvimi sizin altyapınıza göre birlikte planlarız.</p></details>
       <details><summary>Stüdyolarımız yeni bir uygulama öğrenecek mi?</summary><p class="ans">Hayır. Riskli üye listesi <b>sizin panelinizde, sizin markanızla</b> görünür. Stüdyo sahibi alıştığı ekranda yeni bir liste görür, o kadar.</p></details>
       <details><summary>Fiyatı ne kadar?</summary><p class="ans">Pilot <b>ücretsiz</b>. Sonrası, Ritmeva'nın açık olduğu stüdyo başına <b>sabit aylık lisans</b>; ister eklenti olarak satarsınız, ister bir paketinize dahil edersiniz. Fiyat listesini görüşmede paylaşırız. Stüdyonuz ayda tek bir üyeyi geri kazansa bile eklenti kendini birkaç kat öder.</p></details>
-      <details><summary>Arkasında kim var?</summary><p class="ans">Ritmeva, <b>olasılık modelleri üzerine çalışan bir matematikçi</b> tarafından kuruldu. Modelin bütün matematiği ayrıntılı bir teknik raporla GitHub'da açık; her formülü görüşmede birlikte inceleyebiliriz. Ürün, bakım istemeden kendi başına çalışacak şekilde tasarlandı.</p></details>
+      <details><summary>Arkasında kim var?</summary><p class="ans">Ritmeva, <b>olasılık modelleri üzerine çalışan bir matematikçi</b> olan Hüseyin Aytekin tarafından kuruldu. Modelin bütün matematiği ayrıntılı bir teknik raporla GitHub'da açık; her formülü görüşmede birlikte inceleyebiliriz. Ürün, bakım istemeden kendi başına çalışacak şekilde tasarlandı. Bize <a href="mailto:ritmeva.iletisim@gmail.com">ritmeva.iletisim@gmail.com</a> adresinden yazabilir ya da <a href="https://www.linkedin.com/in/h%C3%BCseyin-aytekin-b9b97027a/" target="_blank" rel="noopener">LinkedIn</a>'den ulaşabilirsiniz.</p></details>
     </div>
   </div>
 </section>
@@ -204,9 +228,10 @@
       <p>Canlı demoyu birlikte açarız, pilot için gereken veriyi netleştiririz. Uymuyorsa açıkça söyleriz.</p>
       {% if pilot_takvim_adresi %}
       <a class="btn btn-primary" href="{{ pilot_takvim_adresi }}" target="_blank" rel="noopener">Takvimden saat seç <span class="arrow" aria-hidden="true">→</span></a>
+      <p class="fallback">Takvim uymuyorsa: <a href="mailto:ritmeva.iletisim@gmail.com">ritmeva.iletisim@gmail.com</a></p>
       {% else %}
       <a class="btn btn-primary" href="/giris">Canlı demoyu aç <span class="arrow" aria-hidden="true">→</span></a>
-      <p class="soon">Görüşme takvimi çok yakında burada.</p>
+      <p class="soon">Görüşme için bize yazın: <a href="mailto:ritmeva.iletisim@gmail.com">ritmeva.iletisim@gmail.com</a></p>
       {% endif %}
     </div>
   </div>
@@ -216,6 +241,9 @@
   <div class="wrap row">
     <a class="logo" href="#top" style="font-size:19px"><svg aria-hidden="true"><use href="#mark"/></svg>ritmeva</a>
     <span>Tüm örnek sayılar sentetik veriden gelir.</span>
+    <span>Hüseyin Aytekin</span>
+    <a href="mailto:ritmeva.iletisim@gmail.com">ritmeva.iletisim@gmail.com</a>
+    <a href="https://www.linkedin.com/in/h%C3%BCseyin-aytekin-b9b97027a/" target="_blank" rel="noopener">LinkedIn</a>
     <a href="/giris">Canlı demo</a>
     <a href="https://github.com/huseyinayt34/panosu" target="_blank" rel="noopener">GitHub</a>
   </div>

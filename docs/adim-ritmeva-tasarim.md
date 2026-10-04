@@ -42,3 +42,39 @@ Every example number is labeled synthetic. Founder line: "olasılık modelleri �
 the page has no `src`/`href` to another host except the GitHub repository link; every `/statik/...` reference in the
 page and every `url(...)` in `tanitim.css` returns 200; calendar setting set and unset; the setting rejects non-https
 values; `/giris` title says Ritmeva.
+
+## Additions 2026-10-04 (K72-K75)
+
+K64-K71 are used by the pilot kit (`docs/adim-pilot-tasarim.md`).
+
+**K72 Founder name and contact on the landing page.** The FAQ answer "Arkasında kim var?" names Hüseyin Aytekin (the
+K58 founder line stays) and ends with the e-mail `ritmeva.iletisim@gmail.com` and the LinkedIn profile. The footer
+shows the name, a mailto link and LinkedIn; "Canlı demo" and "GitHub" stay. Pilot box: with a calendar address, the
+calendar button plus "Takvim uymuyorsa: <e-mail>"; without one, the demo button plus "Görüşme için bize yazın:
+<e-mail>", which replaces the K56 "coming soon" line. `.cta .soon` is now 14 px (`.cta p` used to override it). No
+phone number. LinkedIn and mailto are links opened on click, not requests the page makes, so K55 holds. Tests: the
+allowed absolute addresses are the GitHub repository and the LinkedIn profile; every `target="_blank"` link carries
+`rel="noopener"`; name and mailto are present with and without the calendar; no "öğrenci", no "yapay zekâ destekli".
+
+**K73 Share card (Open Graph / Twitter).** `og:type`, `og:site_name`, `og:locale` (tr_TR), `og:title` and
+`og:description` (same text as `<title>` and the meta description), `og:image` with width, height and alt, and
+`twitter:card=summary_large_image`. `og:url` and `og:image` are absolute (`url_for`), because link previews ignore
+relative URLs. The image is self-hosted: `statik/medya/ritmeva-paylasim.jpg`, 1200x630. On Render uvicorn runs with
+`--proxy-headers`, so the URLs come out as https; the owner checks this after deploy, not a test. Tests: both values
+start with `http`, the image path is `/statik/medya/ritmeva-paylasim.jpg` and it is served as `image/jpeg`.
+
+**K74 Self-hosted promo video.** New section "90 saniye" (`id="video"`, not in the nav) between the three answers and
+`#kanit`: `statik/medya/ritmeva-tanitim.mp4` (H.264/AAC, 88.5 s, 1920x1080, 6.8 MB, moov box first) with the poster
+`statik/medya/ritmeva-afis.jpg` (1280x720), caption "all members and amounts are synthetic demo data". The video is
+`preload="none"`, has no autoplay and has `playsinline`, so it downloads nothing until the visitor presses play.
+Not a YouTube/Vimeo embed: that would be a third-party request on page load (K55). Starlette `StaticFiles` answers
+Range requests with 206, which Safari on iPhone requires. Cost: 6.8 MB in git history and in the Docker image; a new
+cut adds about as much again. No Git LFS (owner decision). Tests: exactly one `<video>`, `preload="none"`, no
+`autoplay`, poster and source under `/statik/medya/` and served, `Range: bytes=0-99` returns 206 with 100 bytes;
+every `src` and `poster` on the page is same-origin or `data:`.
+
+**K75 Source-available license.** `LICENSE` at the repository root: the code may be read, run on one's own computer
+to evaluate or learn, and quoted briefly with attribution; commercial use (in a product, for customers, inside a
+business), offering it as a hosted service, and copying or redistributing it need prior written permission from the
+copyright holder. This is not an open-source license. README ends with a short "Lisans" section pointing to it and
+to the contact e-mail.

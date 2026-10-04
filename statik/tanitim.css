@@ -183,6 +183,9 @@ td .why { color: var(--muted); font-size: 14.5px; }
 .call { font: 600 13px/1 var(--body); color: var(--accent); border: 1px solid var(--accent-line); background: var(--accent-soft); border-radius: 999px; padding: 7px 11px; white-space: nowrap; }
 .caption { margin-top: 14px; font-size: 14px; color: var(--faint); }
 
+/* Promo video (K74): same frame as .window; the width/height attributes keep the 16:9 box before the poster loads */
+.film video { display: block; width: 100%; max-width: 100%; height: auto; margin-top: 48px; border-radius: 18px; border: 1px solid var(--line); background: var(--bg-deep); box-shadow: 0 40px 120px -40px rgba(52,195,165,.25), 0 20px 60px rgba(0,0,0,.4); }
+
 /* Proof numbers */
 .proof { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin-top: 48px; border-top: 1px solid var(--line); }
 @media (max-width: 860px) { .proof { grid-template-columns: 1fr; } }
@@ -229,7 +232,9 @@ td .why { color: var(--muted); font-size: 14.5px; }
 .cta .box { border-radius: 28px; padding: clamp(32px, 6vw, 72px); background: radial-gradient(120% 140% at 100% 0%, rgba(52,195,165,.20), transparent 55%), var(--surface); border: 1px solid var(--line); display: grid; gap: 22px; justify-items: start; }
 .cta h2 { font-size: clamp(32px, 4.6vw, 56px); line-height: 1.03; max-width: 16ch; }
 .cta p { color: var(--muted); font-size: 19px; max-width: 34em; }
+.sec-head .kicker, .cta .kicker { font-size: 13px; color: var(--accent); }
 .soon { font-size: 14px; color: var(--faint); }
+.cta .soon, .cta .fallback { font-size: 14px; color: var(--faint); }
 
 /* Footer with giant wordmark */
 footer { padding-top: 64px; overflow: hidden; }
