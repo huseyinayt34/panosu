@@ -106,8 +106,13 @@ Dosyada isim, telefon ya da e-posta sütunu yoktur. Olsa bile okunmaz (Bölüm 3
 
 ## 3. Kişisel veri ve KVKK
 
-- **Ritmeva sizin sunucunuzda çalışır.** Dosyalar sizin makinenizde okunur, sonuç sizin makinenize yazılır. Üye
-  verisi bize gönderilmez; KVKK kapsamındaki veri sorumluluğu sizde kalır, bize veri aktarımı olmaz.
+- **Ritmeva sizin sunucunuzda çalışacak şekilde tasarlandı.** Dosyalar sizin makinenizde okunur, sonuç sizin
+  makinenize yazılır; bugün bu, pilot komutunu kendi makinenizde çalıştırdığınızda geçerlidir (sunucu paketi
+  planlanan, Bölüm 9). Bu yolda üye verisi bize gönderilmez. Veri sorumlusu (KVKK) sizsiniz ve öyle kalırsınız.
+- **Dosyaları bize gönderirseniz** (pilotta ikinci yol, Bölüm 7): isimsiz ve kodları değiştirilmiş veri de, siz
+  kodları geri eşleyebildiğiniz sürece KVKK'da kişisel veri sayılabilir (takma ad, anonim değildir). Bu durumda biz
+  veri işleyen oluruz; bu yol ancak yazılı bir veri işleme sözleşmesiyle ve sizin hukuki değerlendirmenizle
+  kullanılmalıdır. Bu yüzden önerimiz birinci yoldur.
 - **Beyaz liste:** yalnızca yukarıdaki alanlar okunur. Dosyadaki diğer sütunlar ayrıştırıcıdan çıkmaz, hiçbir
   yere yazılmaz, hiçbir çıktıda görünmez. Girdi dosyaları kopyalanmaz.
 - **Hassas sütunlar:** başlığında "TC", "T.C.", "kimlik no", "kan", "biyometri", "parmak", "sağlık", "hastalık",
@@ -115,7 +120,7 @@ Dosyada isim, telefon ya da e-posta sütunu yoktur. Olsa bile okunmaz (Bölüm 3
   hücreleri okuma anında atılır.
 - **Ad, telefon, e-posta:** pilot ve skor akışında hiç okunmaz. Hata mesajları da yalnızca satır numarası, alan ve
   sebep yazar, değer yazmaz.
-- **Ek anonimleştirme (isteğe bağlı):** model yalnızca zaman farklarını kullanır ve "bugün"ü verideki son girişten
+- **Ek gizleme (isteğe bağlı; anonimleştirme yerine geçmez):** model yalnızca zaman farklarını kullanır ve "bugün"ü verideki son girişten
   alır. Bu yüzden iki dosyadaki tüm tarihleri aynı gün sayısı kadar geri kaydırmak sonucu değiştirmez (testle
   doğrulanmıştır). Üye kodlarını da sizin bildiğiniz bir eşlemeyle başka kodlara çevirebilirsiniz.
 
@@ -186,7 +191,7 @@ Entegrasyondan önce modelin **sizin verinizde** ne kadar isabetli olduğunu öl
    - Komutu kendi makinenizde çalıştırırsınız ve bize yalnızca raporu gönderirsiniz (veri hiç çıkmaz). Komut
      veritabanı, `.env` ya da PostgreSQL gerektirmez; Python ve bu depo yeterlidir.
    - Ya da yalnızca bu iki dosyayı (isimsiz; isterseniz tarihleri kaydırılmış ve kodları değiştirilmiş) bize
-     gönderirsiniz.
+     gönderirsiniz. Bu yol, önce yazılı bir veri işleme sözleşmesi gerektirir (Bölüm 3).
 
    ```powershell
    python -m servisler.pilot_dogrula --kaynak stuvio --ad "Örnek Stüdyo" --paketler paketler.csv --girisler girisler_2025.csv girisler_2026.csv
