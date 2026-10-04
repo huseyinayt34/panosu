@@ -12,7 +12,8 @@ main.py → rotalar/ → (bagimliliklar.py, servisler/, semalar/) → models.py 
 - `servisler/`: business rules. Does NOT import FastAPI, does not raise HTTPException.
   CSV/Excel import (`docs/adim-4b-tasarim.md`): `ice_aktarma` is the pure core (reading, mapping, converters;
   no database), `ice_aktarma_yaz` writes in a single transaction (UPSERT, package chain, renewal risk),
-  `ice_aktar` is the command.
+  `ice_aktar` is the command. `pilot` + `pilot_dogrula`: pilot validation report and score list from a firm's
+  package/check-in files, in memory, no database (`docs/adim-pilot-tasarim.md`).
 - `semalar/`: Pydantic request/response schemas.
 - `models.py`: mirrors columns only. SQL is the single source of the schema.
 - `faz1_sema.sql`: readable schema source. `alembic/sql/0001_faz1_sema.sql`: the same, without BEGIN/COMMIT.
@@ -73,6 +74,7 @@ uvicorn main:app --reload                        # development server, /docs
 .\.venv\Scripts\python.exe -m servisler.ice_aktar --veritabani <ad> --isletme <uuid> --kaynak <ad> --uyeler u.csv --paketler p.csv --girisler g.csv   # import PREVIEW (no writes; suggested mapping in raporlar/ice_aktarma_esleme.json); _demo/_test only
 .\.venv\Scripts\python.exe -m servisler.ice_aktar ... --esleme raporlar/ice_aktarma_esleme.json --onayla   # write in a single transaction + renewal risk; --anonim: name "Üye xxxxxx", phone/e-mail not read
 .\.venv\Scripts\python.exe -m sentetik.disa_aktar --veritabani <ad>_demo --isletme <uuid> --cikti raporlar/disa_aktarma/   # member/package/check-in CSVs (cp1254, ";")
+.\.venv\Scripts\python.exe -m servisler.pilot_dogrula --kaynak <ad> --paketler p.csv --girisler g.csv [g2.csv ...] [--ad "Studio"]   # pilot report + today's list, no database (raporlar/pilot/<ad>/; docs/adim-pilot-tasarim.md)
 ```
 Placeholders: `<ad>` = name, `<e>` = e-mail, `<a>` = full name, `<uuid>` = business id.
 

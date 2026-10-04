@@ -87,7 +87,7 @@ research shelf: `docs/roadmap.md`. Math decisions (model choice, assumptions) be
 | 2 | Alembic baseline | Done |
 | 3 | Customer API | Done |
 | 4a | Services + visits API, synthetic data engine | Done |
-| 4b | CSV/Excel import (`docs/adim-4b-tasarim.md`) | 4b-1 Done; 4b-2 real-data validation and 4b-3 web screen pending |
+| 4b | CSV/Excel import (`docs/adim-4b-tasarim.md`) | 4b-1 Done; 4b-2 validation command done (pilot step), first real run at the first pilot; 4b-3 web screen pending |
 | 5a | Model library: V1, BG/NBD, MBG/NBD, Gamma-Gamma, Riskteki Para (`docs/adim-5-6-tasarim.md`) | Done |
 | 5b | Memberships, renewal risk, S6 backtest (`docs/adim-5b-tasarim.md`) | Done |
 | 5c | Renewal model calibration with real renewal data | Waiting for Faz 0 data |
@@ -103,6 +103,7 @@ research shelf: `docs/roadmap.md`. Math decisions (model choice, assumptions) be
 | - | Math report: model, MAP, validation, limitations (`docs/matematik-raporu.md`) | Done |
 | - | Ritmeva brand + public landing page (`docs/adim-ritmeva-tasarim.md`) | Done |
 | - | Exact renewal probability (Rao-Blackwell), `mbgnbd-map-v3` (`docs/adim-rao-blackwell-tasarim.md`) | Done |
+| - | Pilot: validation report + score list without a database (`docs/adim-pilot-tasarim.md`) | Done |
 
 ## Open issues (Açık konular)
 - After the (μ, κ) fix (`docs/adim-mu-kappa-tasarim.md` section 4): tune prior centers (`analitik.bgnbd` ONSEL_*)

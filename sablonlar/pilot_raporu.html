@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>{{ ad }} · Ritmeva pilot raporu · {{ tarih(d.veri_gunu) }}</title>
+<style>
+  @page { size: A4; margin: 14mm 12mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Arial, sans-serif; color: #1d2733; font-size: 10.5pt; margin: 0; line-height: 1.4; }
+  .sayfa { max-width: 186mm; margin: 0 auto; padding: 8mm 0; }
+  header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #1d2733;
+           padding-bottom: 4px; margin-bottom: 12px; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 17pt; margin: 0; }
+  .tarih { color: #556; }
+  .kutular { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .kutu { flex: 1 1 160px; border: 1px solid #c9d1da; border-radius: 6px; padding: 8px 10px; }
+  .kutu .etiket { font-size: 8.5pt; color: #556; text-transform: uppercase; letter-spacing: .03em; }
+  .kutu .deger { font-size: 15pt; font-weight: 600; margin-top: 3px; }
+  .kutu .not { font-size: 8.5pt; color: #556; margin-top: 2px; }
+  .yorum { background: #eef6f4; border-left: 3px solid #0e7c6b; padding: 7px 10px; margin: 0 0 12px; }
+  .yorum p { margin: 0 0 3px; }
+  .uyari { background: #fff6e5; border-left: 3px solid #b26b00; padding: 6px 10px; margin: 0 0 10px; font-size: 9.5pt; }
+  h2 { font-size: 11.5pt; margin: 14px 0 5px; }
+  p.alt { font-size: 9pt; color: #445; margin: 0 0 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+  th, td { padding: 3px 4px; text-align: left; vertical-align: top; border-bottom: 1px solid #e1e6eb; }
+  th { background: #f2f4f7; font-weight: 600; }
+  td.sayi, th.sayi { text-align: right; white-space: nowrap; }
+  td.nowrap { white-space: nowrap; }
+  .hayir { color: #b42318; font-weight: 600; }
+  .evet { color: #146c43; }
+  ul { margin: 0 0 6px; padding-left: 18px; font-size: 9.5pt; }
+  .yazdir { position: fixed; top: 12px; right: 12px; font: inherit; font-weight: 600; padding: 8px 14px; color: #fff;
+            border: 1px solid #0e7c6b; border-radius: 8px; background: #0e7c6b; cursor: pointer; }
+  @media print { .yazdir { display: none; } }
+  @media screen { body { background: #f4f6f9; }
+    .sayfa { max-width: 210mm; margin: 24px auto; padding: 12mm; background: #fff; border-radius: 8px;
+             box-shadow: 0 1px 2px rgba(15, 27, 45, .06), 0 4px 14px rgba(15, 27, 45, .05); } }
+  @media screen and (max-width: 600px) { .sayfa { margin: 0; padding: 56px 12px 16px; border-radius: 0; }
+    table { display: block; overflow-x: auto; } }
+  footer { margin-top: 14px; font-size: 8.5pt; color: #556; border-top: 1px solid #c9d1da; padding-top: 5px; }
+</style>
+</head>
+<body>
+<button class="yazdir" onclick="window.print()">Yazdır / PDF</button>
+<div class="sayfa">
+  <header>
+    <h1>{{ ad }} · pilot raporu</h1>
+    <div class="tarih">Ritmeva · veri günü {{ tarih(d.veri_gunu) }}</div>
+  </header>
+
+  {% for u in d.uyarilar %}<div class="uyari">{{ u }}</div>{% endfor %}
+
+  <section class="kutular">
+    <div class="kutu">
+      <div class="etiket">Ayırt etme gücü (AUC)</div>
+      <div class="deger">{{ ondalik(d.auc, 2) if d.auc is not none else '—' }}</div>
+      <div class="not">{% if d.auc_alt is not none %}%95 aralık {{ ondalik(d.auc_alt, 2) }}–{{ ondalik(d.auc_ust, 2) }}. {% endif %}0,50 yazı-tura, 1,00 kusursuz.</div>
+    </div>
+    <div class="kutu">
+      <div class="etiket">En riskli {{ d.ilk_sira_n }} paket</div>
+      <div class="deger">{{ d.ilk_sira_birakan }} / {{ d.ilk_sira_n }} yenilemedi</div>
+      <div class="not">{% if beklenen_birakan is not none %}Rastgele seçilen {{ d.ilk_sira_n }} pakette beklenen: {{ ondalik(beklenen_birakan, 1) }}.{% endif %}</div>
+    </div>
+    <div class="kutu">
+      <div class="etiket">Riskteki Para</div>
+      <div class="deger">{{ para(d.tahmini_kayip) }}</div>
+      <div class="not">Gerçekleşen kayıp {{ para(d.gercek_kayip) }}{% if rp_fark is not none %}; tahmin %{{ ondalik((rp_fark * 100) | abs, 0) }} {{ 'düşük' if rp_fark < 0 else 'yüksek' }}{% endif %}.</div>
+    </div>
+  </section>
+
+  <div class="yorum">{% for c in yorum %}<p>{{ c }}</p>{% endfor %}</div>
+
+  <h2>Nasıl test ettik?</h2>
+  <p class="alt">Verinizin son {{ sabit.GERI_GUN }} gününü modelden sakladık. Model {{ tarih(d.kesimler[0]) }} gününde
+    duruyormuş gibi yalnızca o güne kadarki girişleri gördü ve o gün aktif olan, {{ sabit.UFUK_GUN }} gün içinde biten
+    paketler için yenileme olasılığını hesapladı. Sonra saklanan günlere bakıp her üyenin paketi bittikten sonraki
+    {{ sabit.YENILEME_PAYI_GUN }} gün içinde yeni paket alıp almadığını kontrol ettik.
+    {% if d.kesimler | length > 1 %}Aynı testi {{ sabit.KESIM_ARALIGI_GUN }}'ar gün geriye giderek {{ d.kesimler | length }} kez yaptık
+    ({% for c in d.kesimler %}{{ tarih(c) }}{{ ', ' if not loop.last }}{% endfor %}); her seferinde model yalnızca o güne
+    kadarki veriyle yeniden kuruldu. Toplam {{ d.skorlar | length }} paket ölçüldü.{% endif %}
+    Tahminler gerçek sonucu görmeden yapıldı; bu yüzden aşağıdaki sayılar modelin gelecekte ne yapacağının dürüst bir
+    ölçüsüdür.</p>
+  <p class="alt"><b>AUC</b>: rastgele seçilen bir yenileyen ve bir yenilemeyen üyeden, yenilemeyene daha yüksek risk verme
+    olasılığı. <b>%95 aralık</b>: sonuçtaki şans payı; aynı stüdyonun başka bir dönemi büyük olasılıkla bu aralıkta bir AUC verir.
+    <b>Riskteki Para</b>: her paket için (1 − yenileme olasılığı) × paket ücreti, toplamı.</p>
+
+  {% if d.dilimler %}
+  <h2>Tahmin edilen ve gerçekleşen yenileme</h2>
+  <p class="alt">Paketler yenileme olasılığına göre {{ d.dilimler | length }} eşit gruba ayrıldı (en riskli grup en üstte).
+    İki sütun birbirine ne kadar yakınsa olasılıklar o kadar güvenilirdir.</p>
+  <table>
+    <thead><tr><th>Grup</th><th class="sayi">Paket</th><th class="sayi">Tahmin edilen yenileme</th><th class="sayi">Gerçekleşen yenileme</th></tr></thead>
+    <tbody>
+    {% for k in d.dilimler %}
+      <tr><td>{{ loop.index }}</td><td class="sayi">{{ k.n }}</td><td class="sayi">{{ olasilik(k.ort_tahmin) }}</td><td class="sayi">{{ olasilik(k.gercek_oran) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if ilk_sira %}
+  <h2>Tahmin gününde en riskli görünen {{ d.ilk_sira_n }} paket ve sonrası</h2>
+  <p class="alt">Üye numaraları sizin gönderdiğiniz kodlardır; kendi kayıtlarınızla karşılaştırabilirsiniz. Tüm liste: dogrulama.csv.</p>
+  <table>
+    <thead><tr><th>Tahmin günü</th><th>Üye No</th><th>Paket</th><th>Bitiş</th><th class="sayi">Yenileme olasılığı</th><th>O günkü neden</th><th>Sonuç</th></tr></thead>
+    <tbody>
+    {% for s, r in ilk_sira %}
+      <tr><td class="nowrap">{{ tarih(s.gun) }}</td><td class="nowrap">{{ s.paket.uye_kimlik }}</td><td class="nowrap">{{ s.paket.ad }}</td><td class="nowrap">{{ tarih(s.paket.bitis_tarihi) }}</td>
+        <td class="sayi">{{ olasilik(s.p_yenileme) }}</td><td>{{ s.aciklama.cumle }}</td>
+        <td class="nowrap">{% if r %}<span class="evet">Yeniledi</span>{% else %}<span class="hayir">Yenilemedi</span>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <h2>Bugünkü liste</h2>
+  <p class="alt">{{ tarih(g.gun) }} itibarıyla {{ g.skorlar | length }} aktif paket puanlandı (skorlar.csv, riskteki paraya göre sıralı).
+    Üye numaralarını kendi sisteminizde isimle eşleştirip arayabilirsiniz.{% if g.donduruldu %} Dondurulmuş {{ g.donduruldu }} paket listeye alınmadı.{% endif %}</p>
+
+  <h2>Veri özeti</h2>
+  <ul>
+    <li>Dönem: {{ tarih(d.ilk_giris) }} – {{ tarih(d.veri_gunu) }}; {{ d.uye_sayisi }} üye, {{ d.paket_sayisi }} paket, {{ d.giris_sayisi }} tamamlanmış giriş.</li>
+    <li>Değerlendirilen paket: {{ d.skorlar | length }} ({{ d.yeniledi | select | list | length }} yeniledi,
+      {{ d.skorlar | length - (d.yeniledi | select | list | length) }} yenilemedi); gerçekleşen yenileme oranı {{ olasilik(d.yenileme_orani) }}.</li>
+    {% if d.dislanan_bitissiz %}<li>Bitiş tarihi olmayan {{ d.dislanan_bitissiz }} giriş paketi değerlendirmeye alınmadı (bitişi gözlenemez).</li>{% endif %}
+  </ul>
+
+  <h2>Sınırlar</h2>
+  <ul>
+    <li>Model, üyenin paket bittiğinde hâlâ düzenli gelip gelmediğine bakar. Fiyat, taşınma, sağlık gibi gelişle ilgisi olmayan nedenleri bilemez.</li>
+    <li>Olasılıklar henüz gerçek yenileme verisiyle ayarlanmadı; bu pilot o ayarın ilk adımıdır.</li>
+    <li>Yalnızca bir stüdyo ölçüldü; paket sayısı az olduğunda sonuçlar belirsizdir (yukarıdaki aralık).</li>
+  </ul>
+
+  <footer>Model {{ g.model_versiyonu }}. Bu rapor yalnızca gönderdiğiniz paket ve giriş dosyalarından, hiçbir veritabanına yazılmadan üretildi
+    ({{ tarih(uretim) }}). Ad, telefon ve e-posta kullanılmadı.</footer>
+</div>
+</body>
+</html>
