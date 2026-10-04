@@ -101,7 +101,7 @@
 
   {% if ilk_sira %}
   <h2>Tahmin gününde en riskli görünen {{ d.ilk_sira_n }} paket ve sonrası</h2>
-  <p class="alt">Üye numaraları sizin gönderdiğiniz kodlardır; kendi kayıtlarınızla karşılaştırabilirsiniz. Tüm liste: dogrulama.csv.</p>
+  <p class="alt">Üye numaraları sizin dosyanızdaki kodlardır; kendi kayıtlarınızla karşılaştırabilirsiniz. Tüm liste: dogrulama.csv.</p>
   <table>
     <thead><tr><th>Tahmin günü</th><th>Üye No</th><th>Paket</th><th>Bitiş</th><th class="sayi">Yenileme olasılığı</th><th>O günkü neden</th><th>Sonuç</th></tr></thead>
     <tbody>
@@ -133,7 +133,7 @@
     <li>Yalnızca bir stüdyo ölçüldü; paket sayısı az olduğunda sonuçlar belirsizdir (yukarıdaki aralık).</li>
   </ul>
 
-  <footer>Model {{ g.model_versiyonu }}. Bu rapor yalnızca gönderdiğiniz paket ve giriş dosyalarından, hiçbir veritabanına yazılmadan üretildi
+  <footer>Model {{ g.model_versiyonu }}. Bu rapor yalnızca paket ve giriş dosyalarınızdan, hiçbir veritabanına yazılmadan üretildi
     ({{ tarih(uretim) }}). Ad, telefon ve e-posta kullanılmadı.</footer>
 </div>
 </body>
