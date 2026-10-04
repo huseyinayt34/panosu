@@ -212,6 +212,8 @@ Sıradaki (gerçek veri gerektirenler): ilk pilot ile gerçek veride doğrulama,
 
 Ayrıntılı yol haritası: `docs/roadmap.md`.
 
+Stüdyo yazılım firmaları için entegrasyon rehberi (dışa aktarılacak veri, KVKK, çıktılar, pilot): `docs/entegrasyon.md`.
+
 ---
 
 ## Teknolojiler

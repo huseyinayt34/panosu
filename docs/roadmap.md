@@ -34,6 +34,8 @@ below is a snapshot as of 2026-10-03; the current status lives in CLAUDE.md.
   but rarely come); causal evidence of win-back.
 - Step 8a: hierarchical Bayesian priors across businesses.
 - After step 11: Score API for software companies.
+- Integration guide for software firms (Turkish, firm-facing): `docs/entegrasyon.md`. The score command and the
+  Docker license package it describes as planned are not built yet.
 
 ## Research shelf (if time allows)
 - RFM/cohort, survival analysis (Kaplan-Meier, Cox), XGBoost + SHAP, campaign simulator / A-B power analysis.
