@@ -24,13 +24,12 @@ from servisler.bicim import ondalik, tarih
 
 DUSUK_RISK_ESIGI = Decimal("0.80")
 NORMAL_ARALIK_MIN_ZIYARET = 4
-# p_aktif bunun altındaysa ayrıştırma (aktif × sürdürme) gösterilmez: q = p_yenileme / p_aktif, simülasyondaki
-# ~2000·p_aktif "aktif" çekilişten tahmin edilir; %5'te ~100 çekiliş, standart hata en fazla ~5 puan (proje sahibi
-# kararı, 2026-10-02).
+# Below this p_aktif the split (active x continue) is not shown. Since K61 q is exact, but it is computed from values
+# stored with 4 decimals (numeric(5,4)); far below 5% that ratio is meaningless (owner decision 2026-10-02, K63).
 AYRISTIRMA_MIN_P_AKTIF = Decimal("0.05")
 # K60: below this P(active now) the member counts as silent (panel "sessiz üyeler" list), so the reason sentence
-# must not say "Şu an düzenli geliyor". Also guards against q = 0 from Monte Carlo when p_aktif ≈ 0
-# (2000·p_aktif ≈ 0 active draws → p_yenileme = 0 → B = ∞ would wrongly pick the remaining-time reason).
+# must not say "Şu an düzenli geliyor".
+# Also guards against q = 0 from 4-decimal rounding when p_aktif is tiny (before K61: from Monte Carlo noise).
 SESSIZ_ESIK = Decimal("0.5")
 
 

@@ -10,11 +10,9 @@ Veritabanına dokunmaz.
 import argparse
 import csv
 import time
-import uuid
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from datetime import date
 from pathlib import Path
 
 import numpy as np
@@ -23,7 +21,7 @@ from decimal import Decimal
 
 from analitik import bgnbd, gamma_gamma, mbgnbd, v1
 from analitik.riskteki_para import yenileme_riskteki_para
-from analitik.yenileme import tohum_turet, yenileme_olasiligi
+from analitik.yenileme import yenileme_olasiligi
 from analitik.ozellikler import ozellik_cikar
 from backtest import metrikler
 from backtest.senaryolar import (
@@ -130,7 +128,8 @@ def kos(kod: str, tohum: int, musteri_sayisi: int = MUSTERI_SAYISI) -> KosuSonuc
 def kos_s6(tohum: int, uye_sayisi: int = S6_UYE_SAYISI) -> KosuSonucu:
     """S6 "Stüdyo": kalibrasyon tarihinde (C) aktif ve 60 gün içinde biten paketlerin yenilenip yenilenmediği.
 
-    Model (M3-sim): C'ye kadarki ziyaretlerle MBG/NBD tahmini + analitik.yenileme simülasyonu.
+    Model (M3-sim): C'ye kadarki ziyaretlerle MBG/NBD tahmini + analitik.yenileme kesin formülü (K61; eski sürüm
+    Monte Carlo idi, etiket M3-sim tarihsel adıyla kalır).
     Kural tabanı: (C − 21, C] içinde en fazla 1 giriş → yenilemez (skor 0), aksi hâlde yeniler (skor 1).
     """
     rng = np.random.default_rng([_SENARYO_NO.get(S6, len(SENARYOLAR)), tohum])
@@ -144,7 +143,7 @@ def kos_s6(tohum: int, uye_sayisi: int = S6_UYE_SAYISI) -> KosuSonucu:
     sira = {int(u): k for k, u in enumerate(secim)}
 
     satirlar = []
-    for no, pk in enumerate(veri.paketler):
+    for pk in veri.paketler:
         if not (pk.baslangic <= C < pk.bitis <= C + S6_UFUK_GUN):
             continue
         k = sira[pk.uye]
@@ -155,8 +154,7 @@ def kos_s6(tohum: int, uye_sayisi: int = S6_UYE_SAYISI) -> KosuSonucu:
             z = kal_zam[k]
             kullanilan = int(np.sum(z >= pk.baslangic)) if pk.baslangic == veri.edinim[pk.uye] else int(np.sum(z > pk.baslangic))
             pencere, kalan = pk.baslangic + S6_GIRIS_SON_KULLANMA - C, hak - kullanilan
-        sonuc = yenileme_olasiligi(prm, oz.x[k], oz.t_x[k], oz.T[k], pencere_gun=pencere, kalan_hak=kalan,
-                                   tohum=tohum_turet(_s6_paket_kimligi(tohum, no), _S6_HESAPLAMA_TARIHI))
+        sonuc = yenileme_olasiligi(prm, oz.x[k], oz.t_x[k], oz.T[k], pencere_gun=pencere, kalan_hak=kalan)
         son_21 = int(np.sum(kal_zam[k] > C - S6_KURAL_PENCERE_GUN))
         satirlar.append((ad, sonuc.p_yenileme, 0.0 if son_21 <= 1 else 1.0, int(pk.yeniledi), Decimal(fiyat)))
 
@@ -184,13 +182,6 @@ def kos_s6(tohum: int, uye_sayisi: int = S6_UYE_SAYISI) -> KosuSonucu:
             ekle(seg, model, "rp_hata_yuzde",
                  float((rp - gercek_kayip) / gercek_kayip * 100) if gercek_kayip else None)
     return s
-
-
-_S6_HESAPLAMA_TARIHI = date(2026, 1, 1)      # tohum türetimi için sabit yer tutucu (sentetik zaman takvimsizdir)
-
-
-def _s6_paket_kimligi(tohum: int, no: int) -> uuid.UUID:
-    return uuid.UUID(int=(tohum << 32) | no)
 
 
 def calistir(
@@ -403,13 +394,13 @@ def _s6_markdown(ozet, tohum_sayisi: int) -> list[str]:
              f"{GERCEK_BGNBD.a:g}, {GERCEK_BGNBD.b:g}).")
     y.append(f"- Gerçek yenileme: paket bittiğinde hayatta olan üye %{S6_YENILEME_ORANI * 100:.0f} olasılıkla aynı türü "
              "yeniler; hayatta olmayan yenilemez.")
-    y.append("- M3-sim = MBG/NBD + sonsal simülasyon (`analitik/yenileme.py`, N = 2 000). Kural = son 21 günde en fazla "
-             "1 giriş → yenilemez (0/1 skor).")
+    y.append("- M3-sim = MBG/NBD + sonsal yenileme olasılığı, kesin formül (`analitik/yenileme.py`, K61; v2'ye kadar "
+             "N = 2 000 Monte Carlo). Kural = son 21 günde en fazla 1 giriş → yenilemez (0/1 skor).")
     y.append("- Riskteki Para hata % = (Σ (1 − P(yenileme)) × fiyat − gerçekleşen kayıp ciro) / gerçekleşen kayıp ciro; "
              "gerçekleşen kayıp = yenilenmeyen paketlerin fiyat toplamı.")
-    y.append("- Bilinen sınırlamalar: M3, S5'te gelecekteki ziyaretleri ~%11 fazla tahmin etti, simülasyon aynı eğilimi "
-             "taşıyabilir. Fiyat, kampanya, taşınma gibi davranış dışı yenileme nedenleri modelde yok (S6'da %10 olarak "
-             "üretilir). Model gerçek yenileme verisiyle kalibre edilmedi (5c).\n")
+    y.append("- Bilinen sınırlamalar: M3, S5'te gelecekteki ziyaretleri ~%11 fazla tahmin etti, yenileme olasılığı "
+             "aynı eğilimi taşıyabilir. Fiyat, kampanya, taşınma gibi davranış dışı yenileme nedenleri modelde yok "
+             "(S6'da %10 olarak üretilir). Model gerçek yenileme verisiyle kalibre edilmedi (5c).\n")
     y.append("| Segment | Paket | Yenileme oranı | M3-sim AUC | Kural AUC | M3-sim Brier | Kural Brier "
              "| Gerçek kayıp (TL) | M3-sim Riskteki Para hata % | Kural Riskteki Para hata % |")
     y.append("|---|---|---|---|---|---|---|---|---|---|")

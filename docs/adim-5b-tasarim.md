@@ -92,6 +92,9 @@ P(yenileme) = P(paket bittiğinde hayatta). Bu, gerçek yenileme verisiyle kalib
 ilk sürümdür (model_versiyonu 'mbgnbd-sim-v1'; 2026-10'dan itibaren 'mbgnbd-map-v2').
 
 ### Hesaplama (sonsal simülasyon)
+> K61 (2026-10-04, `docs/adim-rao-blackwell-tasarim.md`): from mbgnbd-map-v3 the same quantity is computed exactly in closed
+> form; the simulation below is kept only as the reference implementation in tests.
+
 İşletmenin tüm üyelerinin ziyaret geçmişiyle M3 (MBG/NBD) parametreleri (r, α, a, b) tahmin edilir.
 Her aktif paket için, üyenin (x, t_x, T) verisiyle:
 1. Şu an hayatta mı? Bernoulli(P(hayatta | x, t_x, T)) (M3 formülü).

@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 
 from analitik import mbgnbd
 from analitik.ozellikler import ozellik_cikar
-from analitik.yenileme import MODEL_VERSIYONU, tohum_turet, yenileme_olasiligi
+from analitik.yenileme import MODEL_VERSIYONU, yenileme_olasiligi
 from models import Isletme, MusteriPaketi, YenilemeRiski, Ziyaret
 from servisler.paket_servisi import kalan_giris
 
@@ -78,8 +78,7 @@ def yenileme_hesapla(db: Session, hesaplama_tarihi: date | None = None) -> int:
             x, t_x, T = 0.0, 0.0, max((hesaplama_tarihi - paket.baslangic_tarihi).days + 1, 1)
         kalan_gun = (paket.bitis_tarihi - hesaplama_tarihi).days if paket.bitis_tarihi else None
         kalan = kalan_giris(db, paket)
-        sonuc = yenileme_olasiligi(prm, x, t_x, T, pencere_gun=kalan_gun, kalan_hak=kalan,
-                                   tohum=tohum_turet(paket.paket_id, hesaplama_tarihi))
+        sonuc = yenileme_olasiligi(prm, x, t_x, T, pencere_gun=kalan_gun, kalan_hak=kalan)
         satirlar.append({
             "musteri_id": paket.musteri_id,
             "paket_id": paket.paket_id,

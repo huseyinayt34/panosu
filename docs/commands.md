@@ -21,7 +21,7 @@ main.py → rotalar/ → (bagimliliklar.py, servisler/, semalar/) → models.py 
   _demo only).
   `demo_tazele`: shifts the dates of [DEMO] businesses to today (K11–K16, `docs/adim-9-tasarim.md`).
   `demo_kur`: rebuilds the demo database from scratch in one command, with fixed seeds and reference day 2026-10-01 (K24).
-- `analitik/`: models (V1, BG/NBD, MBG/NBD, Gamma-Gamma, renewal simulation), explanation (why risky); knows no database.
+- `analitik/`: models (V1, BG/NBD, MBG/NBD, Gamma-Gamma, renewal probability), explanation (why risky); knows no database.
 - `backtest/`: model comparison on synthetic scenarios (S0–S6); no database.
 - `sablonlar/`: Jinja2 HTML templates (weekly report). `sablonlar/web/`: web panel templates.
 - `statik/`: web panel static files (htmx.min.js 2.0.4, panel.css); served under `/statik`.

@@ -3,9 +3,9 @@
 Demo verisini bugüne kaydırır (Adım 9c; proje sahibi kararı, 2026-10-02; `docs/adim-9-tasarim.md` K11–K16).
 
 K11 Zaman kaydırma: [DEMO] işletmelerin tüm tarihleri aynı d gün ileri kaydırılır; yeniden üretim yok (kimlikler,
-    üyelikler, oturumlar korunur). M3 ve yenileme simülasyonu zamanı yalnızca farklarla görür (x, t_x, T, kalan gün),
-    yani model zaman ötelemesine göre değişmezdir: p_hayatta_simdi birebir aynı kalır; p_yenileme yalnızca Monte
-    Carlo hatası kadar oynar (simülasyon tohumu hesaplama tarihine bağlı).
+    üyelikler, oturumlar korunur). M3 ve yenileme modeli zamanı yalnızca farklarla görür (x, t_x, T, kalan gün),
+    yani model zaman ötelemesine göre değişmezdir: p_hayatta_simdi birebir aynı kalır; p_yenileme de birebir aynı
+    kalır (K61: kesin formül, tohum yok).
 K12 d = (yerel bugün − 1) − en son ziyaretin yerel günü; d ≤ 0 → dokunma. Tazelemeden sonra son ziyaret günü = dün.
 K13 Kayanlar: ziyaretler.ziyaret_zamani, musteri_paketleri.baslangic_tarihi/bitis_tarihi, musteriler.olusturma_zamani,
     musteri_izinleri.kayit_zamani. yenileme_riskleri kaymaz; bugün için yeniden hesaplanır. isletme_giderleri: gider

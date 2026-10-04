@@ -29,7 +29,7 @@ main.py → rotalar/ → (bagimliliklar.py, servisler/, semalar/) → models.py 
 - `servisler/`: business rules; never imports FastAPI or raises HTTPException.
 - `semalar/`: Pydantic schemas. `models.py` mirrors columns only; SQL is the single schema source
   (`faz1_sema.sql` = readable copy of `alembic/sql/0001_faz1_sema.sql`).
-- `analitik/`: models (V1, BG/NBD, MBG/NBD, Gamma-Gamma, renewal simulation) and "why risky"; no database.
+- `analitik/`: models (V1, BG/NBD, MBG/NBD, Gamma-Gamma, renewal probability) and "why risky"; no database.
 - `backtest/`: model comparison on synthetic scenarios S0-S6; no database.
 - `sentetik/`: synthetic data, demo setup, refresh and export; writes only to databases ending in `_demo`.
 - `sablonlar/` (Jinja2), `statik/` (htmx, `panel.css`; keep `panel.css`: the uptime monitor and the Render health
@@ -102,12 +102,13 @@ research shelf: `docs/roadmap.md`. Math decisions (model choice, assumptions) be
 | - | Model fix (μ, κ): MAP, weak prior, two starts (`docs/adim-mu-kappa-tasarim.md`) | Done |
 | - | Math report: model, MAP, validation, limitations (`docs/matematik-raporu.md`) | Done |
 | - | Ritmeva brand + public landing page (`docs/adim-ritmeva-tasarim.md`) | Done |
+| - | Exact renewal probability (Rao-Blackwell), `mbgnbd-map-v3` (`docs/adim-rao-blackwell-tasarim.md`) | Done |
 
 ## Open issues (Açık konular)
 - After the (μ, κ) fix (`docs/adim-mu-kappa-tasarim.md` section 4): tune prior centers (`analitik.bgnbd` ONSEL_*)
   on real data in 4b-2; minimum-data guard (all single-visit or 1-day history gives confident but meaningless
-  output; thresholds are the owner's call); similar ridge in Gamma-Gamma (q → ∞, backtest only); full Bayes /
-  Rao-Blackwell for parameter uncertainty in the renewal simulation.
+  output; thresholds are the owner's call); similar ridge in Gamma-Gamma (q → ∞, backtest only); full Bayes
+  for parameter uncertainty in the renewal probability (Rao-Blackwell done: exact formula, K61).
 - Synthetic generator (low priority): in [DEMO] Butik Reformer 2% of members visit several times a day (up to 6.2),
   and 9 members have 22 same-second visit pairs (different dis_kimlik); import collapses them (K33). Fixing changes
   demo numbers: separate decision.

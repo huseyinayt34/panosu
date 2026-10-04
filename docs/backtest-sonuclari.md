@@ -222,14 +222,14 @@ Her kutu: müşteri sayısı, tahmin edilen ortalama P(hayatta), gerçek hayatta
 - Paket karışımı (HİPOTEZ): 1 Aylık %45 (2500 TL), 3 Aylık %25 (6000 TL), 6 Aylık %15 (10000 TL), 12 Giriş %15 (800 TL); giriş paketi 60 gün sonra biter (hak kalsa da).
 - Katılım: düzenli aralıklar (Gamma k = 8), μ_i ~ Gamma(şekil 3, ortalama 4 g); bırakma MBG/NBD tarzı, ilk ziyaret dahil her ziyaretten sonra p ~ Beta(1, 19).
 - Gerçek yenileme: paket bittiğinde hayatta olan üye %90 olasılıkla aynı türü yeniler; hayatta olmayan yenilemez.
-- M3-sim = MBG/NBD + sonsal simülasyon (`analitik/yenileme.py`, N = 2 000). Kural = son 21 günde en fazla 1 giriş → yenilemez (0/1 skor).
+- M3-sim = MBG/NBD + sonsal yenileme olasılığı, kesin formül (`analitik/yenileme.py`, K61; v2'ye kadar N = 2 000 Monte Carlo). Kural = son 21 günde en fazla 1 giriş → yenilemez (0/1 skor).
 - Riskteki Para hata % = (Σ (1 − P(yenileme)) × fiyat − gerçekleşen kayıp ciro) / gerçekleşen kayıp ciro; gerçekleşen kayıp = yenilenmeyen paketlerin fiyat toplamı.
-- Bilinen sınırlamalar: M3, S5'te gelecekteki ziyaretleri ~%11 fazla tahmin etti, simülasyon aynı eğilimi taşıyabilir. Fiyat, kampanya, taşınma gibi davranış dışı yenileme nedenleri modelde yok (S6'da %10 olarak üretilir). Model gerçek yenileme verisiyle kalibre edilmedi (5c).
+- Bilinen sınırlamalar: M3, S5'te gelecekteki ziyaretleri ~%11 fazla tahmin etti, yenileme olasılığı aynı eğilimi taşıyabilir. Fiyat, kampanya, taşınma gibi davranış dışı yenileme nedenleri modelde yok (S6'da %10 olarak üretilir). Model gerçek yenileme verisiyle kalibre edilmedi (5c).
 
 | Segment | Paket | Yenileme oranı | M3-sim AUC | Kural AUC | M3-sim Brier | Kural Brier | Gerçek kayıp (TL) | M3-sim Riskteki Para hata % | Kural Riskteki Para hata % |
 |---|---|---|---|---|---|---|---|---|---|
-| Tümü | 224 ± 15 | 0.582 ± 0.029 | 0.827 ± 0.033 | 0.720 ± 0.021 | 0.153 ± 0.016 | 0.241 ± 0.026 | 434115 ± 43725 | -13.2 ± 4.6 | -36.0 ± 4.8 |
-| 1 Aylık | 95 ± 9 | 0.689 ± 0.056 | 0.710 ± 0.067 | 0.561 ± 0.042 | 0.187 ± 0.032 | 0.289 ± 0.058 | 73875 ± 15400 | -30.7 ± 11.2 | -73.9 ± 7.2 |
-| 3 Aylık | 61 ± 8 | 0.524 ± 0.056 | 0.884 ± 0.049 | 0.789 ± 0.044 | 0.125 ± 0.027 | 0.202 ± 0.050 | 174000 ± 33548 | -10.0 ± 6.4 | -37.3 ± 6.5 |
-| 6 Aylık | 26 ± 5 | 0.327 ± 0.111 | 0.951 ± 0.041 | 0.910 ± 0.049 | 0.085 ± 0.046 | 0.120 ± 0.065 | 172000 ± 36216 | -7.1 ± 9.2 | -16.6 ± 8.8 |
-| 12 Giriş | 42 ± 4 | 0.577 ± 0.056 | 0.814 ± 0.065 | 0.699 ± 0.054 | 0.161 ± 0.035 | 0.264 ± 0.056 | 14240 ± 2429 | -18.4 ± 12.5 | -49.3 ± 14.2 |
+| Tümü | 224 ± 15 | 0.582 ± 0.029 | 0.827 ± 0.034 | 0.720 ± 0.021 | 0.153 ± 0.016 | 0.241 ± 0.026 | 434115 ± 43725 | -13.2 ± 4.5 | -36.0 ± 4.8 |
+| 1 Aylık | 95 ± 9 | 0.689 ± 0.056 | 0.711 ± 0.068 | 0.561 ± 0.042 | 0.187 ± 0.032 | 0.289 ± 0.058 | 73875 ± 15400 | -30.8 ± 11.3 | -73.9 ± 7.2 |
+| 3 Aylık | 61 ± 8 | 0.524 ± 0.056 | 0.885 ± 0.049 | 0.789 ± 0.044 | 0.125 ± 0.027 | 0.202 ± 0.050 | 174000 ± 33548 | -10.0 ± 6.3 | -37.3 ± 6.5 |
+| 6 Aylık | 26 ± 5 | 0.327 ± 0.111 | 0.950 ± 0.041 | 0.910 ± 0.049 | 0.085 ± 0.047 | 0.120 ± 0.065 | 172000 ± 36216 | -7.1 ± 9.3 | -16.6 ± 8.8 |
+| 12 Giriş | 42 ± 4 | 0.577 ± 0.056 | 0.813 ± 0.067 | 0.699 ± 0.054 | 0.161 ± 0.035 | 0.264 ± 0.056 | 14240 ± 2429 | -18.3 ± 12.5 | -49.3 ± 14.2 |

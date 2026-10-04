@@ -1,26 +1,25 @@
-"""Yenileme modeli (Adım 5b, model_versiyonu 'mbgnbd-map-v2'). Tasarım: docs/adim-5b-tasarim.md, Bölüm 3.
-'mbgnbd-map-v2' (2026-10): simülasyon 'mbgnbd-sim-v1' ile aynıdır; M3 parametreleri MLE yerine MAP ile kestirilir
-(θ = (ln m, ln r, logit μ, ln κ), zayıf önsel, iki başlangıç; analitik.bgnbd, docs/adim-mu-kappa-tasarim.md).
+"""Yenileme modeli (Adım 5b; model_versiyonu 'mbgnbd-map-v3'). Tasarım: docs/adim-5b-tasarim.md Bölüm 3,
+docs/adim-rao-blackwell-tasarim.md (K61-K63).
+'mbgnbd-map-v3' (2026-10): same model as 'mbgnbd-map-v2' (MAP parameters, analitik.bgnbd); P(renewal) is now computed
+exactly instead of by Monte Carlo (K61). v2 differed from v3 only by Monte Carlo noise.
 
 Tanım: üye, paketi bittiği anda hâlâ "hayatta" (MBG/NBD anlamında aktif) ise yeniler:
     P(yenileme) = P(paket bittiğinde hayatta)
 Gerçek yenileme verisiyle kalibre edilmemiş davranışsal ilk sürümdür.
 
-Sonsal simülasyon (her paket için N = 2 000):
-  1. Şu an hayatta mı?  Bernoulli(P(hayatta | x, t_x, T))  (M3 formülü)
-  2. Hayattaysa:        λ ~ Gamma(r + x, oran α + T),  p ~ Beta(a, b + x + 1)
-     Türetme: (λ, p) verildiğinde "hayatta + gözlenen veri" olabilirliği (1−p)^(x+1)·λ^x·e^(−λT); öncüllerle
-     çarpımı λ^(r+x−1)·e^(−(α+T)λ) · p^(a−1)·(1−p)^(b+x) olur ve iki bağımsız çarpana ayrılır.
-  3. İleri simülasyon: hayattaysa ziyaretler Poisson(λ), her ziyaretten sonra p ile bırakma.
-     K = pencerede gerçekleşecek ziyaret sayısı; üye K ziyaretin hepsinden sağ çıkarsa pencere sonunda hayattadır.
-     K ziyaret için ayrı ayrı Bernoulli çekmek yerine tek U ~ Uniform(0,1) ile "U < (1−p)^K" sınanır
-     (dağılım olarak aynı). K ters CDF ile ortak bir tekdüze sayıdan çekilir: aynı tohumda pencere uzadıkça K azalmaz.
-       - Süre bazlı: pencere = bitişe kalan gün; üs = K.
-       - Giriş bazlı: kalan R hak. Son kullanma yoksa üs = R (haklar mutlaka biter; son hakkı kullanan ziyaretin
-         ardındaki bırakma da sayılır, proje sahibi kararı 2026-10-01). Son kullanma E gün sonraysa K ~ Poisson(λE),
-         üs = min(K, R): K ≥ R ise haklar E'den önce biter, değilse E anında hayatta olma sınanır.
-  4. P(yenileme) = hayatta biten simülasyonların oranı.
-Tekrarlanabilirlik: tohum (paket_id, hesaplama_tarihi)'nden türetilir.
+Model (unchanged since 5b): alive now with P(hayatta | x, t_x, T); if alive, λ ~ Gamma(r + x, rate α + T),
+p ~ Beta(a, b + x + 1) (independent); K ~ Poisson(λ·w) visits in the window w; after each visit drop out with p.
+    P(yenileme) = P(hayatta) · E[(1 − p)^e],   e = K (duration), R (entries, no expiry), min(K, R) (entries + expiry)
+Exact forms (K61), with s = r + x, β = α + T, M(k) = E[(1 − p)^k] = B(a, b + x + 1 + k) / B(a, b + x + 1):
+  - Duration, window D:   E[e^(−λ·p·D)] = E_p[(1 + p·D/β)^(−s)] = ₂F₁(s, a; a + b + x + 1; −D/β)
+                          (Gamma MGF, then Euler's integral; evaluated after the Pfaff transform so the argument
+                          is in [0, 1)).
+  - Entries, no expiry:   M(R).
+  - Entries, expiry E:    K ~ NBD(s, θ = β/(β + E)) after integrating λ out;
+                          Σ_{k<R} P(K = k)·M(k) + P(K ≥ R)·M(R).
+simule_et keeps the Monte Carlo version as a reference implementation; tests check that the exact value is its
+n → ∞ limit (Rao-Blackwell: replacing a random draw by its conditional expectation never increases variance; here
+every draw is integrated out, so the variance is zero).
 """
 
 import hashlib
@@ -29,12 +28,13 @@ from dataclasses import dataclass
 from datetime import date
 
 import numpy as np
-from scipy.stats import poisson
+from scipy.special import betaln, hyp2f1
+from scipy.stats import nbinom, poisson
 
 from analitik import mbgnbd
 from analitik.bgnbd import BGNBDParametreleri
 
-MODEL_VERSIYONU = "mbgnbd-map-v2"
+MODEL_VERSIYONU = "mbgnbd-map-v3"
 SIMULASYON_SAYISI = 2_000
 
 
@@ -61,7 +61,7 @@ def simule_et(
     kalan_hak: int | None = None,
     n: int = SIMULASYON_SAYISI,
 ) -> float:
-    """P(yenileme) simülasyonu (adım 1–4).
+    """Reference Monte Carlo of P(renewal) (used by tests to check kesin_yenileme; not used in production).
 
     pencere_gun: süre bazlıda bitişe kalan gün; giriş bazlıda son kullanmaya kalan gün (yoksa None).
     kalan_hak:   giriş bazlıda kalan giriş hakkı; süre bazlıda None.
@@ -84,6 +84,38 @@ def simule_et(
     return float((hayatta & sag).mean())
 
 
+def _beta_momenti(prm: BGNBDParametreleri, x: float, k):
+    """E[(1 - p)^k], p ~ Beta(a, b + x + 1)."""
+    b1 = prm.b + x + 1
+    return np.exp(betaln(prm.a, b1 + k) - betaln(prm.a, b1))
+
+
+def kesin_yenileme(
+    p_hayatta_simdi: float,
+    prm: BGNBDParametreleri,
+    x: float,
+    T: float,
+    *,
+    pencere_gun: float | None,
+    kalan_hak: int | None = None,
+) -> float:
+    """Exact P(renewal) = p_alive * E[(1 - p)^exponent], the limit of simule_et as n -> infinity (K61)."""
+    if (kalan_hak is not None and kalan_hak <= 0) or (pencere_gun is not None and pencere_gun <= 0):
+        return p_hayatta_simdi
+    if pencere_gun is None:
+        sag = _beta_momenti(prm, x, kalan_hak)
+    elif kalan_hak is None:
+        s, c = prm.r + x, prm.a + prm.b + x + 1
+        z = -pencere_gun / (prm.alfa + T)
+        sag = (1 - z) ** (-prm.a) * hyp2f1(c - s, prm.a, c, z / (z - 1))
+    else:
+        s, teta = prm.r + x, (prm.alfa + T) / (prm.alfa + T + pencere_gun)
+        k = np.arange(kalan_hak)
+        sag = (np.sum(nbinom.pmf(k, s, teta) * _beta_momenti(prm, x, k))
+               + nbinom.sf(kalan_hak - 1, s, teta) * _beta_momenti(prm, x, kalan_hak))
+    return p_hayatta_simdi * min(max(float(sag), 0.0), 1.0)
+
+
 def yenileme_olasiligi(
     prm: BGNBDParametreleri,
     x: float,
@@ -92,10 +124,7 @@ def yenileme_olasiligi(
     *,
     pencere_gun: float | None,
     kalan_hak: int | None,
-    tohum: int,
-    n: int = SIMULASYON_SAYISI,
 ) -> YenilemeSonucu:
-    """Tek paket için P(hayatta şimdi) (M3 formülü, kesin) ve P(yenileme) (simülasyon)."""
+    """Tek paket için P(hayatta şimdi) ve P(yenileme), ikisi de kesin formül."""
     p_simdi = float(mbgnbd.p_hayatta(prm, [x], [t_x], [T])[0])
-    rng = np.random.default_rng(tohum)
-    return YenilemeSonucu(p_simdi, simule_et(p_simdi, prm, x, T, rng, pencere_gun=pencere_gun, kalan_hak=kalan_hak, n=n))
+    return YenilemeSonucu(p_simdi, kesin_yenileme(p_simdi, prm, x, T, pencere_gun=pencere_gun, kalan_hak=kalan_hak))

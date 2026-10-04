@@ -226,7 +226,7 @@ def test_demo_olmayan_isletmeye_dokunulmaz(admin_engine, uygulama, demo_kur, iki
 
 
 def test_degismezlik_p_hayatta_birebir(admin_engine, uygulama, demo_kur, oturum):
-    """K11: kaydırılmış demoda bugün hesaplanan p_hayatta_simdi eskisiyle birebir aynı."""
+    """K11: kaydırılmış demoda bugün hesaplanan p_hayatta_simdi (and since K61 p_yenileme) eskisiyle birebir aynı."""
     from servisler.yenileme_servisi import yenileme_hesapla
 
     T0 = BUGUN
@@ -252,7 +252,7 @@ def test_degismezlik_p_hayatta_birebir(admin_engine, uygulama, demo_kur, oturum)
         y = yeni[paket_id]
         assert y.p_hayatta_simdi == e.p_hayatta_simdi
         assert (y.kalan_gun, y.kalan_giris) == (e.kalan_gun, e.kalan_giris)
-        assert abs(y.p_yenileme - e.p_yenileme) <= 0.05
+        assert y.p_yenileme == e.p_yenileme                       # K61: exact formula, no seed
 
 
 def test_gider_penceresi_db(admin_engine, uygulama, demo_kur):

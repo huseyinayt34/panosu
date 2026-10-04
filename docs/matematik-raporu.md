@@ -305,15 +305,13 @@ $P(\text{hayatta})$ değerindeki oynama 0,049'dan 0,00000001'e indi.
 
 ---
 
-## 5. Yenileme olasılığı: simülasyon
+## 5. Yenileme olasılığı: kesin formül
 
 $P(\text{hayatta})$ "şu an" ile ilgilidir. Stüdyonun asıl sorusu "paket bitince yenileyecek mi"dir. Tanımımız:
 **üye paketi bittiği anda hâlâ hayattaysa yeniler.** (Bu davranışsal bir ilk sürümdür; gerçek yenileme verisiyle
 kalibre edilmedi, Bölüm 10.)
 
-Bunun kapalı bir formülü yok, çünkü paket türleri farklı (süre bazlı: "1 ay"; giriş bazlı: "12 giriş, 60 günde
-biter"). Bu yüzden **Monte Carlo simülasyonu** kullanıyoruz: aynı üyenin geleceğini bilgisayarda 2.000 kez "oynatıp"
-kaçında yenilediğini sayıyoruz (`analitik/yenileme.py`). Her oynatmada:
+Model şöyle (`analitik/yenileme.py`):
 
 1. **Şu an hayatta mı?** $P(\text{hayatta})$ olasılıkla evet.
 2. **Bu üyenin kendi $\lambda$ ve $p$'si.** Üyenin geçmişini gördükten sonra (sonsal dağılım):
@@ -321,28 +319,52 @@ kaçında yenilediğini sayıyoruz (`analitik/yenileme.py`). Her oynatmada:
    Türetme: "hayatta + bu veri" olabilirliği $(1-p)^{x+1}\lambda^x e^{-\lambda T}$; önsellerle çarpınca
    $\lambda$ ve $p$ ayrı çarpanlara ayrılır ve tanıdık dağılımlar çıkar (**eşlenik önsel**: önsel ile sonsal aynı
    aileden). Gelme sayısı $x$, Gamma'nın şeklini büyütür (daha emin oluruz); gözlem süresi $T$ oranını büyütür.
-3. **Paketin geri kalanını oynat.** Kalan $w$ günde $K \sim \text{Poisson}(\lambda w)$ ziyaret gelir; üye bunların
+3. **Paketin geri kalanı.** Kalan $w$ günde $K \sim \text{Poisson}(\lambda w)$ ziyaret gelir; üye bunların
    hepsinden sonra bırakmazsa, yani $(1-p)^K$ olasılıkla, paket sonunda hâlâ hayattadır.
-   - Giriş bazlı pakette son kullanma yoksa üs kalan hak sayısıdır; varsa $\min(K, \text{kalan hak})$.
-4. $P(\text{yenileme})$ = hayatta biten oynatmaların oranı.
+   - Giriş bazlı pakette son kullanma yoksa üs kalan hak sayısı $R$'dir; varsa $\min(K, R)$.
+
+Yani $P(\text{yenileme}) = P(\text{hayatta}) \cdot E\big[(1-p)^{\text{üs}}\big]$. Kısaltmalar: $s = r + x$,
+$\beta = \alpha + T$ ve $M(k) = E[(1-p)^k] = B(a,\ b+x+1+k) / B(a,\ b+x+1)$ (Beta fonksiyonu oranı). Beklenti
+üç paket türünde de kapalı biçimde hesaplanır:
+
+- **Süre bazlı paket ($D$ gün kaldı):** Önce $\lambda$ üzerinden: Gamma'nın moment üreten fonksiyonu
+  $E[e^{-\lambda p D}] = (1 + pD/\beta)^{-s}$ verir. Sonra $p$ üzerinden: Euler integrali bu beklentiyi
+  hipergeometrik fonksiyona çevirir:
+  $$E\big[(1-p)^K\big] = {}_2F_1\big(s,\ a;\ a+b+x+1;\ -D/\beta\big).$$
+  Sayısal kararlılık için Pfaff dönüşümüyle argüman $[0, 1)$ aralığına taşınarak hesaplanır.
+- **Giriş bazlı, son kullanma yok:** $M(R)$.
+- **Giriş bazlı, son kullanma $E$ gün sonra:** $\lambda$'yı integralle çıkarınca $K$ negatif binom dağılımına
+  uyar: $K \sim \text{NBD}\big(s,\ \theta = \beta/(\beta + E)\big)$ (Gamma karışımlı Poisson). O zaman
+  $$E\big[(1-p)^{\min(K,R)}\big] = \sum_{k<R} P(K=k)\, M(k) + P(K \ge R)\, M(R).$$
 
 **Örnek** (Bölüm 3.3 parametreleri, paketin bitmesine 20 gün): Ayşe $P(\text{hayatta}) = 0{,}98$,
-$P(\text{yenileme}) = 0{,}96$. Burak $0{,}14$ ve $0{,}13$.
+$P(\text{yenileme}) = 0{,}96$. Burak $0{,}14$ ve $0{,}14$ (kesin değer 0,1395).
 
-### 5.1 Monte Carlo hatası
+### 5.1 Simülasyondan kesin formüle: Rao-Blackwell
 
-2.000 oynatma, sonsuz oynatmanın yaklaşığıdır. Bir oranın standart hatası $\sqrt{P(1-P)/N}$'dir. $N = 2000$'de bu
-en kötü durumda ($P = 0{,}5$) 0,011, yani **±1,1 puan**. Ayşe için ($P \approx 0{,}96$) formül 0,0044 veriyor;
-200 farklı tohumla ölçtüğümüz yayılım 0,0043. Toplam Riskteki Parada hatalar birbirini kısmen götürdüğü için
-göreli oynama çok daha küçüktür (önceki ölçümde ≈ %0,5).
+İlk sürüm (v2'ye kadar) bu beklentiyi **Monte Carlo** ile hesaplıyordu: üyenin geleceğini 2.000 kez "oynatıp"
+kaçında hayatta bittiğini sayıyordu. "Bunun kapalı formülü yok" diye düşünmüştük; yanlışmış.
 
-**Tekrarlanabilirlik:** her paketin tohumu (paket kimliği, hesaplama tarihi) çiftinin SHA-256 özetinden türetilir.
-Aynı gün aynı paket için hesap yeniden çalıştırılırsa sonuç bit bit aynı çıkar. Python'un `hash()` fonksiyonu
-süreçten sürece değiştiği için kullanılmadı.
+**Rao-Blackwell teoremi:** bir tahmincide rastgele bir çekilişi, o çekilişin koşullu beklentisiyle değiştirmek
+varyansı asla artırmaz (toplam varyans formülü: $\operatorname{Var} X = E[\operatorname{Var}(X\mid Y)] +
+\operatorname{Var}(E[X\mid Y])$, ilk terimi atıyoruz). İlk adım, "şu an hayatta mı" yazı-turasını olasılığıyla
+değiştirmekti: $\hat P = p_{\text{aktif}} \cdot \frac1N \sum_j (1-p_j)^{K_j}$. Bu, demo paketlerinde standart
+sapmayı yaklaşık beşte birine indirdi. Aynı hamleyi $K$, $\lambda$ ve $p$ için de yapınca geriye hiç rastgelelik
+kalmıyor: varyans tam sıfır. Bunu mümkün kılan, önsellerin eşlenik olmasıdır (Gamma-Poisson → negatif binom,
+Beta momentleri → Beta fonksiyonu).
 
-**Bir tasarım ayrıntısı:** $K$, tek bir tekdüze sayıdan ters dağılım fonksiyonuyla çekilir. Böylece aynı tohumda
-pencere uzadıkça $K$ azalamaz; "paket daha uzun sürerse yenileme olasılığı artar" gibi saçma bir sonuç Monte Carlo
-gürültüsünden bile çıkamaz (**ortak rastgele sayılar** tekniği).
+**Ne değişti (model sürümü `mbgnbd-map-v3`, K61):**
+- Eski Monte Carlo hatası paket başına $\sqrt{P(1-P)/N}$, $N = 2000$'de en fazla ±1,1 puandı; artık 0.
+- Aynı veri her zaman bit bit aynı sonucu verir; tohuma (rastgele sayı başlangıcına) gerek kalmadı.
+- Çok sessiz bir üyede eski yöntem 2.000 oynatmanın hiçbirinde "aktif" çekmeyip $P(\text{yenileme}) = 0$
+  diyebiliyordu (K60 hatasının tetikleyicisi). Kesin formül, $P(\text{hayatta}) > 0$ iken her zaman
+  $0 < P(\text{yenileme}) \le P(\text{hayatta})$ verir.
+- Doğrulama: formül 300 rastgele parametre setinde 200.000 oynatmalı simülasyonla tutuyor (en büyük sapma 3,7
+  standart hata; 300 normal değişkenin beklenen en büyüğü ≈ 3); süre bazlı formül tek boyutlu sayısal integralle
+  $10^{-10}$ düzeyinde aynı. Simülasyon kodu, testlerde bu karşılaştırma için referans olarak duruyor.
+- Sonuç değişmedi, yalnızca gürültü gitti: S6 backtest AUC 0,8271 → 0,8272, Riskteki Para hatası −%13,19 → −%13,19.
+  Demo, 45 günlük Riskteki Para: Butik Reformer 22.359,40 → 22.051,95 TL (−%1,4), Denge Pilates −%0,4; ikisi de
+  eski yöntemin tohumdan tohuma oynamasının içinde.
 
 ---
 
@@ -354,7 +376,7 @@ Bu, o paketten **beklenen kayıp cirodur**. Stüdyonun toplam Riskteki Parası b
 olmasının nedeni **beklentinin doğrusallığıdır**: rastgele değişkenler bağımsız olmasa bile
 $E[\sum X_i] = \sum E[X_i]$. Yani "her paketin beklenen kaybını topla" ile "toplam kaybın beklentisi" aynı şeydir.
 
-Örnek: 2.500 TL'lik paketi olan Burak için $(1 - 0{,}13) \times 2500 = 2.175$ TL; Ayşe için
+Örnek: 2.500 TL'lik paketi olan Burak için $(1 - 0{,}14) \times 2500 = 2.150$ TL; Ayşe için
 $(1-0{,}96)\times 2500 = 100$ TL. Panel bu tutarları büyükten küçüğe sıralar. Böylece stüdyo sahibi sınırlı
 zamanını en çok parayı kurtaracağı üyeye harcar.
 
@@ -383,8 +405,9 @@ Logaritma alınca çarpım toplama döner: $-\ln P(\text{yenileme}) = A + B$, bu
 
 **Sadakat kuralı:** açıklama yalnızca modelin gerçekten kullandığı bilgiden türetilir. Modelde olmayan bir sinyal
 ("fiyattan şikâyet etti" gibi) asla yazılmaz.
-**Güvenilirlik eşiği:** $q$, simülasyondaki "aktif" oynatmalardan tahmin edilir. $p_{\text{aktif}} < 0{,}05$ ise
-2.000 oynatmanın 100'den azı aktif olur ve $q$'nun hatası ~5 puana çıkar; bu durumda ayrıştırma gösterilmez.
+**Güvenilirlik eşiği:** $q = P(\text{yenileme}) / p_{\text{aktif}}$, veritabanında 4 haneye yuvarlanmış iki sayıdan
+hesaplanır. $p_{\text{aktif}} < 0{,}05$ iken bu oran anlamsızlaşır (ör. 0,0000 / 0,0002); bu durumda ayrıştırma
+gösterilmez (K63). v2'ye kadar asıl neden Monte Carlo hatasıydı.
 
 ---
 
@@ -434,11 +457,11 @@ birden bakıyoruz.
 
 20 tohum × 1.500 üye, 2 yıl; kalibrasyon tarihinde aktif olup 60 gün içinde biten paketler değerlendirildi.
 
-| | M3 + simülasyon | Basit kural ("son 21 günde ≤ 1 giriş") |
+| | M3 + yenileme formülü | Basit kural ("son 21 günde ≤ 1 giriş") |
 |---|---|---|
-| AUC | **0,827 ± 0,033** | 0,720 ± 0,021 |
+| AUC | **0,827 ± 0,034** | 0,720 ± 0,021 |
 | Brier | **0,153** | 0,241 |
-| Riskteki Para hatası | **−%13,2 ± 4,6** | −%36,0 ± 4,8 |
+| Riskteki Para hatası | **−%13,2 ± 4,5** | −%36,0 ± 4,8 |
 
 **−%13 nereden geliyor? (çıkarım, ölçülmedi):** S6 üretecinde hayatta olan üye bile %10 olasılıkla yenilemiyor
 (fiyat, taşınma gibi davranış dışı nedenler). Model bunu bilmez; "hayattaysa yeniler" der. Gerçek yenileme oranı
@@ -464,8 +487,9 @@ Riskli üye listesinin sırası değişmedi.
 
 1. **Zaman ötelemesine değişmezlik.** Model zamanı yalnızca farklar olarak görür ($x$, $t_x$, $T$, kalan gün).
    Bütün tarihleri $d$ gün kaydırmak bu farkların hiçbirini değiştirmez; bu yüzden canlı demo her gece yeniden veri
-   üretmek yerine tarihleri bugüne kaydırır ve $P(\text{hayatta})$ birebir aynı kalır. Yalnızca $P(\text{yenileme})$
-   Monte Carlo hatası kadar oynar, çünkü tohum hesaplama tarihine bağlı.
+   üretmek yerine tarihleri bugüne kaydırır ve $P(\text{hayatta})$ birebir aynı kalır. v3'ten beri $P(\text{yenileme})$
+   de birebir aynı kalır (kesin formül; v2'de tohum hesaplama tarihine bağlı olduğu için Monte Carlo hatası kadar
+   oynuyordu).
 2. **Kanonik sıra.** Olabilirlik bir toplamdır; matematikte toplamanın sırası önemsizdir ama bilgisayarda değildir
    (kayan nokta toplaması birleşmeli değildir: $(a+b)+c \ne a+(b+c)$ olabilir). Düz sırtta bu en son basamak farkı
    bile parametreyi uzaklara taşıyordu. Fit, girdiyi her zaman $(x, t_x, T)$ sırasına dizer; aynı veri hangi
@@ -473,8 +497,8 @@ Riskli üye listesinin sırası değişmedi.
    önsel çözdü.
 3. **Linux ve Windows farkı.** Canlı sitede (Linux) Butik Reformer'ın 45 günlük Riskteki Parası 22.379,85 TL,
    yerel bilgisayarda (Windows) 22.380,70 TL çıkmıştı. Aynı veriye $10^{-15}$ göreli gürültü eklemek eski kodda bu
-   toplamı 180 TL oynatıyordu; yeni kodda 0 TL. Kalan kuruş farkları mümkündür: tek bir simülasyon çekilişi bir
-   paketi fiyatın 1/2.000'i kadar oynatabilir.
+   toplamı 180 TL oynatıyordu; yeni kodda 0 TL. Kesin formülle (v3) simülasyon kaynaklı kuruş farkları da kalktı:
+   demo toplamları Windows ve Linux'ta kuruşu kuruşuna aynı çıktı (Butik Reformer 22.051,95 TL, 2026-10-04).
 4. **Tekrarlanabilirlik testi, model hatası buldu.** Zayıf tanımlanabilirliği bir istatistik testi değil, "dışarı
    yaz, geri oku, aynı mı?" diyen bir yazılım testi yakaladı. Ders: sonuçları bit bit karşılaştıran testler,
    matematikteki kararsızlığın erken uyarı sistemidir.
@@ -493,15 +517,11 @@ Riskli üye listesinin sırası değişmedi.
 4. **Asgari veri koruması yok.** Herkes tek ziyaretliyse veya geçmiş 1 günse model emin ama anlamsız cevap verir.
    Eşikler (ör. "en az 30 gün ve 20 üye") karar bekliyor.
 5. **Gelecek ziyaretleri fazla tahmin.** S5'te M3 gelecek ziyaretleri %11, S2'de seyrek gelenlerde %21 fazla
-   tahmin etti. Simülasyon aynı eğilimi taşıyabilir.
-6. **Parametre belirsizliği simülasyona taşınmıyor.** Simülasyon tek bir MAP noktası kullanır; "parametrelerden de
+   tahmin etti. Yenileme olasılığı aynı eğilimi taşıyabilir.
+6. **Parametre belirsizliği yenileme olasılığına taşınmıyor.** Hesap tek bir MAP noktası kullanır; "parametrelerden de
    emin değiliz" bilgisi kayboluyor. Küçük stüdyoda olasılıklar olması gerekenden biraz daha emin görünebilir.
    Çözüm adayı tam Bayes (parametreleri de örneklemek).
-7. **Rao-Blackwell iyileştirmesi.** Simülasyonda "şu an hayatta mı" ve "kalan sürede bıraktı mı" için ayrı yazı-tura
-   atmak yerine bunların olasılıkları doğrudan kullanılabilir:
-   $\hat P(\text{yenileme}) = p_{\text{aktif}} \cdot \frac1N \sum_j (1-p_j)^{K_j}$. Rao-Blackwell teoremine göre bu
-   tahmincinin varyansı daha küçüktür (koşullu beklenti almak varyansı asla artırmaz) ve
-   $P(\text{yenileme}) \le P(\text{aktif})$ her zaman sağlanır. Henüz uygulanmadı.
+7. **Rao-Blackwell: yapıldı (v3, Bölüm 5.1).** Simülasyonun yerini kesin formül aldı; gürültü sıfır, sonuçlar aynı.
 8. **Gamma-Gamma (harcama modeli).** Backtest'te ciro tahmini için kullanılır, stüdyo akışında kullanılmaz (paket
    fiyatı bilinir). Onda da benzer bir sırt var ($q \to \infty$); dokunulmadı.
 9. **Sentetik üretici kusurları.** Butik Reformer'da üyelerin %2'si günde birden fazla geliyor; demo sayıları bunu
@@ -519,6 +539,9 @@ Riskli üye listesinin sırası değişmedi.
 - **Matematik geçmişinin avantajı:** düz sırt = Hessian'ın sıfıra yakın özdeğeri; önsel = ridge'deki L2 cezası, o
   yöne $1/\sigma^2$ eğrilik ekler ve veri büyüdükçe etkisi kaybolur; ileri fark $O(h)$, merkezi fark $O(h^2)$;
   Brier uygun puanlama kuralıdır; Riskteki Para toplamı beklentinin doğrusallığına dayanır.
+- **Rao-Blackwell:** "Yenileme olasılığını 2.000 oynatmalı simülasyonla hesaplıyordum. Rao-Blackwell ile zarları koşullu
+  beklentileriyle değiştirdim; sonuna kadar götürünce eşlenik önseller sayesinde kapalı formül çıktı (hipergeometrik
+  fonksiyon ve negatif binom). Gürültü sıfır, sonuçlar aynı; 'kapalı formül yok' varsayımım yanlışmış."
 - **Dürüstlük cümlesi:** "Kodu bir yapay zekâ ajanıyla yazdım; tasarım ve matematik kararları benim, her parçasını
   açıklayabilirim. Sonuçlar sentetik veride; gerçek veride ilk ölçüm pilotun işi."
 
@@ -541,8 +564,10 @@ Riskli üye listesinin sırası değişmedi.
 | $\theta$ | teta | Optimizasyon koordinatları $(\ln m, \ln r, \operatorname{logit}\mu, \ln\kappa)$ |
 | $\ell$ | | Log-olabilirlik |
 | $\sigma$ | sigma | Önselin standart sapması (burada 2) |
-| $N$ | | Simülasyon sayısı (2.000) |
-| $K$ | | Simüle edilen gelecek ziyaret sayısı |
+| $N$ | | Eski simülasyon sayısı (2.000; v3'te kullanılmıyor) |
+| $K$ | | Kalan sürede gelecek ziyaret sayısı (rastgele değişken) |
+| $B(\cdot,\cdot)$ | Beta fonksiyonu | $M(k)$ oranında kullanılır |
+| ${}_2F_1$ | hipergeometrik fonksiyon | Süre bazlı paketin kesin formülü |
 
 ## Ek B. Kaynaklar
 
@@ -551,12 +576,15 @@ Riskli üye listesinin sırası değişmedi.
 - Batislam, E. P., Denizel, M. & Filiztekin, A. (2007). Empirical validation and comparison of models for customer
   base analysis. *International Journal of Research in Marketing*, 24(3), 201–209.
 - Depo belgeleri: `docs/adim-5-6-tasarim.md` (model seçimi, backtest), `docs/adim-5b-tasarim.md` (yenileme
-  simülasyonu), `docs/adim-9-tasarim.md` (açıklama, zaman kaydırma), `docs/adim-mu-kappa-tasarim.md` (K42–K52),
-  `docs/backtest-sonuclari.md`.
+  modeli), `docs/adim-9-tasarim.md` (açıklama, zaman kaydırma), `docs/adim-mu-kappa-tasarim.md` (K42–K52),
+  `docs/adim-rao-blackwell-tasarim.md` (K61–K63), `docs/backtest-sonuclari.md`.
 
 ## Ek C. Bu rapordaki yeni hesapların yeniden üretimi
 
-Bölüm 3.3 örnekleri, 4.2 profil olabilirliği, 4.3 Hessian özdeğerleri ve 5.1 Monte Carlo yayılımı bu rapor için
+Bölüm 3.3 örnekleri, 4.2 profil olabilirliği ve 4.3 Hessian özdeğerleri bu rapor için
 `b8c5ea5` üzerinde, `tests/test_analitik_map.py::_a_verisi_ozellikleri` verisiyle Linux'ta hesaplandı ve Windows'ta
 aynı sonuçlarla doğrulandı (Hessian:
 $h = 10^{-3}$ ile merkezi ikinci fark, toplam negatif log-olabilirlik). Diğer bütün sayılar depo belgelerinden alındı.
+Bölüm 5 örnekleri v3 kodu üzerinde 2026-10-04'te hesaplandı (Linux bulut ve Windows'ta aynı); 5.1'deki doğrulama
+ölçümleri (300 rastgele parametre seti, standart sapmanın beşte birine inmesi) Linux bulutta yapıldı, Windows'ta
+testler aynı karşılaştırmayı geçiyor.

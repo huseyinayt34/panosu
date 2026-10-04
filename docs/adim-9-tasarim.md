@@ -72,6 +72,8 @@ kısıtlıyken beklenen kaybı en büyük olandan başlamak korunan beklenen cir
 tek satırla özetlenir. Olasılıklar <%1 / >%99 biçiminde; p_aktif < %5 iken ayrıştırma (aktif × sürdürme) gösterilmez
 (`AYRISTIRMA_MIN_P_AKTIF`). Gerekçe: q = p_yenileme / p_aktif, simülasyondaki yaklaşık 2000·p_aktif "aktif"
 çekilişten tahmin edilir; %5'te bu yaklaşık 100 çekiliş, standart hata en fazla 5 puan; daha azında q güvenilmez.
+K63 (2026-10-04): since the exact formula (K61) the Monte Carlo reason is gone; the threshold stays because q is
+computed from values stored with 4 decimals.
 
 **K6 Neden riskli = riskin iki çarpana ayrılması:** P(yenileme) = P(aktif şimdi) × P(sürdürme | aktif).
 p_aktif = p_hayatta_simdi; q = min(p_yenileme / p_aktif, 1) (p_aktif = 0 ise q tanımsız).
@@ -242,4 +244,5 @@ p_yenileme farkı Monte Carlo hatasıdır (tohum hesaplama tarihine bağlı; K11
 ## Sonraya kalanlar
 
 - Fikir (model değişikliği, ayrı karar): yenileme simülasyonunda Rao-Blackwell, P(yenileme) = p_aktif ×
-  ort(sürdürme | aktif); gürültüyü azaltır ve P(yenileme) ≤ P(aktif)'i garanti eder.
+  ort(sürdürme | aktif); gürültüyü azaltır ve P(yenileme) ≤ P(aktif)'i garanti eder. Done: K61
+  (`docs/adim-rao-blackwell-tasarim.md`).

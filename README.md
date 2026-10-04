@@ -23,7 +23,7 @@ Ana adres **https://panosu.onrender.com** tanıtım sayfasıdır. Demo girişi: 
 
 - **Veritabanı katmanında kiracı izolasyonu:** Tüm işletmeler tek PostgreSQL veritabanını paylaşır; izolasyon uygulama kodundaki `WHERE` filtrelerine değil, **Row-Level Security (RLS)** politikalarına dayanır. Koddaki bir hata bile başka işletmenin verisini sızdıramaz.
 - **En az yetki ilkesi:** Uygulama, RLS'yi atlayamayan ve tablo oluşturamayan kısıtlı `panosu_app` rolüyle bağlanır. Şema değişiklikleri yalnızca ayrı bir DDL rolüyle, Alembic üzerinden yapılır. Üretim modunda uygulama yanlış rolle veya yönetici adresi tanımlıyken açılmayı reddeder.
-- **Olasılıksal model, açıklanabilir çıktı:** Yenileme riski MBG/NBD + sonsal simülasyonla hesaplanır; panel, riski "sessizlik" ve "kalan süre / kalan hak" paylarına ayırıp sade bir cümleyle anlatır.
+- **Olasılıksal model, açıklanabilir çıktı:** Yenileme riski MBG/NBD sonsal dağılımlarından kapalı formülle (simülasyon gürültüsü olmadan) hesaplanır; panel, riski "sessizlik" ve "kalan süre / kalan hak" paylarına ayırıp sade bir cümleyle anlatır.
 - **Model seçimi kanıtla:** Modeller, gerçek parametreleri bilinen sentetik senaryolarda (S0–S6) ROC AUC ve kalibrasyonla karşılaştırıldı (`docs/backtest-sonuclari.md`).
 - **Kiracı bütünlüğü:** Alt tablolar `(isletme_id, x_id)` bileşik yabancı anahtarlarıyla bağlıdır; bir işletmenin ziyareti başka işletmenin müşterisine bağlanamaz.
 - **Güvenlik bekçisi testleri:** `create_all()` gibi RLS'siz tablo üretebilecek çağrıları, süper kullanıcıyla bağlanmayı ve rol ayrıcalıklarını otomatik yakalayan testler.
@@ -57,7 +57,7 @@ flowchart LR
 | Bağlam | `bagimliliklar.py`, `database.py` | Her işlem başında aktif işletme/kullanıcıyı PostgreSQL'e bildirir |
 | Veri modeli | `models.py` | Tabloların ORM karşılıkları (şemanın tek kaynağı SQL'dir) |
 | Şema | `faz1_sema.sql`, `alembic/` | Tablolar, RLS, view'lar, trigger'lar, GRANT'lar |
-| Modeller | `analitik/` | V1, BG/NBD, MBG/NBD, Gamma-Gamma, yenileme simülasyonu, "neden riskli" açıklaması (veritabanı bilmez) |
+| Modeller | `analitik/` | V1, BG/NBD, MBG/NBD, Gamma-Gamma, yenileme olasılığı (kesin formül), "neden riskli" açıklaması (veritabanı bilmez) |
 | Backtest | `backtest/` | Sentetik senaryolarda model karşılaştırması (S0–S6) |
 | Sentetik veri | `sentetik/` | BG/NBD tabanlı demo verisi, demo kurulumu ve gece tazelemesi |
 | Yayın | `Dockerfile`, `.github/workflows/` | Docker imajı; demo kurulumu ve gece tazelemesi iş akışları |
@@ -80,7 +80,7 @@ Ayrıntılı türetmeler, varsayımlar, doğrulama ve bilinen sınırlar **matem
 
 $$P(\text{hayatta} \mid x, t_x, T) = \left[1 + \frac{a}{b + x}\left(\frac{\alpha + T}{\alpha + t_x}\right)^{r + x}\right]^{-1}$$
 
-**Yenileme olasılığı (sonsal simülasyon).** Üye, paketi bittiği anda hâlâ hayattaysa yeniler. Her paket için 2 000 simülasyon: önce şu an hayatta olup olmadığı çekilir; hayattaysa $\lambda$ ve $p$ sonsal dağılımlarından (Gamma ve Beta) çekilir ve paket sonuna kadar ileri simüle edilir. $P(\text{yenileme})$, hayatta biten simülasyonların oranıdır. Gerçek yenileme verisiyle henüz kalibre edilmemiştir.
+**Yenileme olasılığı (kesin formül).** Üye, paketi bittiği anda hâlâ hayattaysa yeniler: $P(\text{yenileme}) = P(\text{hayatta}) \cdot E[(1-p)^K]$; $\lambda$ ve $p$ sonsal dağılımlarından (Gamma ve Beta) gelir, $K$ kalan sürede gelecek ziyaret sayısıdır. Eşlenik önseller sayesinde beklenti kapalı biçimde hesaplanır (hipergeometrik fonksiyon ve negatif binom; Rao-Blackwell'in son hâli, `docs/matematik-raporu.md` Bölüm 5). İlk sürüm aynı değeri 2 000 oynatmalı Monte Carlo ile tahmin ediyordu; sonuçlar aynı, gürültü sıfır. Gerçek yenileme verisiyle henüz kalibre edilmemiştir.
 
 **Riskteki Para.** Bitişine 45 gün (varsayılan) kalan paketler üzerinden:
 
@@ -92,7 +92,7 @@ $$-\ln P(\text{yenileme}) = \underbrace{-\ln P(\text{şu an aktif})}_{A:\ \text{
 
 $A \ge B$ ise ana neden sessizliktir ("normal aralığının k katı süredir gelmiyor"), değilse paketin kalan süresi veya kalan hakkıdır. Açıklama yalnızca modelin kullandığı bilgiden üretilir.
 
-**Karşılaştırma modelleri.** V1 (kişisel geliş aralığı ~ Normal, risk $= \Phi\big((r-\mu)/\sigma_{\text{etkin}}\big)$), BG/NBD ve basit bir kural ("son 21 günde en fazla 1 giriş"). Sentetik stüdyo senaryosunda (S6) yenileme tahmininde MBG/NBD + simülasyon ROC AUC 0.83, kural 0.72 verdi; tüm sonuçlar `docs/backtest-sonuclari.md`'de.
+**Karşılaştırma modelleri.** V1 (kişisel geliş aralığı ~ Normal, risk $= \Phi\big((r-\mu)/\sigma_{\text{etkin}}\big)$), BG/NBD ve basit bir kural ("son 21 günde en fazla 1 giriş"). Sentetik stüdyo senaryosunda (S6) yenileme tahmininde MBG/NBD + yenileme formülü ROC AUC 0.83, kural 0.72 verdi; tüm sonuçlar `docs/backtest-sonuclari.md`'de.
 
 ---
 

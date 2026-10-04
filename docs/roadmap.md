@@ -51,3 +51,5 @@ below is a snapshot as of 2026-10-03; the current status lives in CLAUDE.md.
 - Closed (2026-10-03): the root cause of the intermittent failure of
   test_demo_tazele.py::test_denetim_kayitlari_degismez was the a,b ridge; fixed by the (μ, κ) reparametrization +
   weak prior (MAP), passes 20/20, backtest regenerated (`docs/adim-mu-kappa-tasarim.md`).
+- Closed (2026-10-04): Monte Carlo noise in P(yenileme) (about ±0.5 points per package; 0 for very silent members)
+  replaced by the exact formula, model version mbgnbd-map-v3 (K61, `docs/adim-rao-blackwell-tasarim.md`).
