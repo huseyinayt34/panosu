@@ -1,6 +1,17 @@
 # Ritmeva — Müşteri Zekâ Platformu
 
+[![Tests](https://github.com/huseyinayt34/panosu/actions/workflows/testler.yml/badge.svg)](https://github.com/huseyinayt34/panosu/actions/workflows/testler.yml)
+
 Kod ve depo adı: Panosu.
+
+> **In English:** Ritmeva is a multi-tenant customer-retention platform for small businesses with repeat customers
+> (pilates studios, gyms, salons). It predicts which members are about to leave with probabilistic models (MBG/NBD
+> fitted per business by MAP estimation, with an exact closed-form renewal probability via Rao-Blackwellization),
+> shows the revenue at risk and explains each risk in one sentence. Tenant isolation is enforced by PostgreSQL
+> row-level security, not by application filters, and 600+ automated tests run on every push. Stack: Python 3.14,
+> FastAPI, SQLAlchemy 2, PostgreSQL, Alembic, Jinja2 + HTMX, Docker. Live demo with synthetic data:
+> https://panosu.onrender.com · Math report (Turkish): `docs/matematik-raporu.md`. Built solo by Hüseyin Aytekin
+> (mathematics, Sakarya University).
 
 Tekrar eden müşterisi olan işletmeler (pilates/spor stüdyosu, salon, klinik vb.) için **çok kiracılı (multi-tenant) müşteri analitiği**.
 Amaç: hangi müşterinin kaybedilmek üzere olduğunu (churn) olasılıksal olarak tahmin etmek, bunu **"Riskteki Para"** olarak göstermek ve her riskli üye için **neden riskli** olduğunu tek cümleyle açıklamak.
@@ -32,7 +43,7 @@ Ana adres **https://panosu.onrender.com** tanıtım sayfasıdır. Demo girişi: 
 - **Kiracı bütünlüğü:** Alt tablolar `(isletme_id, x_id)` bileşik yabancı anahtarlarıyla bağlıdır; bir işletmenin ziyareti başka işletmenin müşterisine bağlanamaz.
 - **Güvenlik bekçisi testleri:** `create_all()` gibi RLS'siz tablo üretebilecek çağrıları, süper kullanıcıyla bağlanmayı ve rol ayrıcalıklarını otomatik yakalayan testler.
 - **Denetim ve KVKK dostu tasarım:** Değişiklikler trigger'larla `denetim_kayitlari` tablosuna yazılır; izni olmayan müşteriye mesaj gönderimi veritabanında engellenir; müşteri anonimleştirme fonksiyonu mevcuttur.
-- **Kapsamlı otomatik test paketi:** izolasyon, güvenlik, kimlik doğrulama, API, web paneli, modeller ve veri doğrulama.
+- **Kapsamlı otomatik test paketi:** izolasyon, güvenlik, kimlik doğrulama, API, web paneli, modeller ve veri doğrulama. Her gönderimde GitHub Actions'ta boş bir PostgreSQL üzerinde baştan çalışır (`.github/workflows/testler.yml`).
 
 ---
 

@@ -1,0 +1,76 @@
+# Runs the full pytest suite on every push to main and on pull requests.
+# Throwaway PostgreSQL service with trust auth: no password exists, so none is committed (CLAUDE.md rule 7).
+# Same order as a local setup: alembic upgrade head with the admin role, then panosu_app is allowed to log in.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testler-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: panosu_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TZ: Europe/Istanbul
+      PANOSU_TEST_ADMIN_URL: postgresql+psycopg2://postgres@localhost:5432/panosu_test
+      PANOSU_TEST_APP_URL: postgresql+psycopg2://panosu_app@localhost:5432/panosu_test
+      PANOSU_MIGRASYON_URL: postgresql+psycopg2://postgres@localhost:5432/panosu_test
+      PANOSU_VERITABANI_URL: postgresql+psycopg2://panosu_app@localhost:5432/panosu_test
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: requirements-uretim.txt
+
+      # Runtime deps plus the test-only packages (versions pinned as in requirements.txt).
+      - name: Dependencies
+        run: pip install -r requirements-uretim.txt pytest==9.1.1 httpx==0.28.1 openpyxl==3.1.5
+
+      # Settings validation needs PANOSU_JWT_GIZLI; random per run and masked in logs.
+      - name: Temporary JWT secret
+        run: |
+          gizli="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')"
+          echo "::add-mask::$gizli"
+          echo "PANOSU_JWT_GIZLI=$gizli" >> "$GITHUB_ENV"
+
+      - name: Schema (alembic upgrade head)
+        run: alembic upgrade head
+
+      # The baseline creates panosu_app as NOLOGIN; locally it gets LOGIN and a password by hand.
+      - name: Allow panosu_app to log in
+        run: |
+          python - <<'EOF'
+          import os
+          from sqlalchemy import create_engine, text
+          with create_engine(os.environ["PANOSU_TEST_ADMIN_URL"]).begin() as con:
+              con.execute(text("ALTER ROLE panosu_app LOGIN"))
+          EOF
+
+      - name: pytest
+        run: python -m pytest -q

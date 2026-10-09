@@ -46,7 +46,8 @@ main.py → rotalar/ → (bagimliliklar.py, servisler/, semalar/) → models.py 
   `statik/vendor/`, self-hosted fonts in `statik/yazitipi/`, promo video and share image in `statik/medya/` (no CDN,
   K55, K74).
 - `Dockerfile`, `requirements-uretim.txt` (runtime deps; update on a new runtime import),
-  `.github/workflows/` (`demo-tazele.yml` nightly, `demo-kur.yml` manual with confirm word "KUR").
+  `.github/workflows/` (`demo-tazele.yml` nightly, `demo-kur.yml` manual with confirm word "KUR", `testler.yml`
+  full pytest on every push to main and on PRs, throwaway PostgreSQL with trust auth).
 Module detail: `docs/commands.md` and the step docs `docs/adim-*.md`.
 
 ## Non-negotiable rules
@@ -131,3 +132,7 @@ research shelf: `docs/roadmap.md`. Math decisions (model choice, assumptions) be
 - "Done" needs evidence: command output or test result.
 - When a step finishes, update the roadmap table here.
 - Reports go to `raporlar/` (gitignored).
+
+## Reference notes
+- docs/agent-ideas.md: owner constraints and notes on the "agent company" idea. Read it only when the owner
+  mentions agents, automation, loops, or game development.
