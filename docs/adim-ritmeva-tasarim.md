@@ -36,7 +36,7 @@ database, role and cookie names, the Docker user, and the demo login `demo@panos
 demo database, a GitHub secret and Render variables; separate small task if wanted).
 
 **K58 Copy rules.** No "AI / yapay zeka" claim (the FAQ says plainly it is a statistical model, MBG/NBD). No prices.
-Every example number is labeled synthetic. Founder line: "olasılık modelleri üzerine çalışan bir matematikçi".
+Every example number is labeled synthetic. Founder line: "matematik okuyan ve olasılık modelleri üzerine çalışan" (2026-10-10; was "matematikçi").
 
 **K59 Tests (`tests/test_tanitim.py`).** `/` returns 200 with no `Set-Cookie`, also with a stale session cookie;
 the page has no `src`/`href` to another host except the GitHub repository link; every `/statik/...` reference in the
