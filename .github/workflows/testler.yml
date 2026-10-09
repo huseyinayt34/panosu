@@ -22,7 +22,9 @@ jobs:
     timeout-minutes: 30
     services:
       postgres:
-        image: postgres:18
+        # Same official image as Docker Hub (identical digest), pulled from the AWS mirror to avoid Docker Hub
+        # rate limits on shared runners.
+        image: public.ecr.aws/docker/library/postgres:18
         env:
           POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: panosu_test
