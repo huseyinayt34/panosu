@@ -15,6 +15,15 @@ On a design ambiguity, do not guess: ask.
 - Keep this file short (max 150 lines); detail lives in docs/. Read only what the task needs.
 - When the conversation gets long, remind the owner to run `/compact`. If an approach turns out wrong, suggest
   `/rewind` instead of stacking fixes on top.
+- The owner is a math student new to software: explain each new concept once, in plain Turkish, with a concrete
+  example; give one next action per reply.
+- In Turkish replies, every English or technical word gets its Turkish meaning in parentheses, e.g. commit
+  (kayıt), push (GitHub'a gönderme).
+- Never ask the owner to paste or screenshot a password, token or secret URL; they run the command themselves
+  and reply "hazır".
+- Firm data (KVKK): never read, upload or copy a firm's real member files into Claude or any cloud service; the
+  firm runs the pilot tools on its own machine and sends only the report.
+- Firm-facing material (pilot kit, `docs/entegrasyon.md`) stays Turkish.
 
 ## Stack
 Python 3.14, FastAPI, SQLAlchemy 2.0 (Mapped/mapped_column), Pydantic v2, PostgreSQL 15+, Alembic, pytest.
@@ -55,7 +64,8 @@ Module detail: `docs/commands.md` and the step docs `docs/adim-*.md`.
    password are never printed. K26: the public live demo password (`PANOSU_DEMO_GIRIS_PAROLA`) differs from local
    ones and still never appears in code, tests (as a literal), output or commits.
 8. New packages need approval.
-9. Push to GitHub only with explicit approval.
+9. Commit and push only with the owner's explicit OK in this chat. Before a push, say in plain words what it
+   changes (a push to main redeploys the live site).
 10. Unrequested refactors or new files/folders: ask first.
 
 ## Databases
