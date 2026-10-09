@@ -83,11 +83,12 @@ def test_onsel_az_veride_merkeze_ceker():
 
 
 def test_kayitli_onsel_demo_isletmelerinden_yeniden_uretilir():
-    """OGRENILMIS_ONSEL is exactly what `python -m backtest.soguk_baslangic ogren` prints (4 decimals)."""
+    """OGRENILMIS_ONSEL is what `python -m backtest.soguk_baslangic ogren` prints (4 decimals). The optimizer's last
+    digits differ between Windows and Linux (CI gave 1.10625... -> 1.1063 vs 1.1062), so the check allows 5e-4."""
     onsel, tetalar = bsb.ogren()
     assert len(tetalar) == 5
     for ogrenilen, kayitli in ((onsel.merkez, sb.OGRENILMIS_ONSEL.merkez), (onsel.sapma, sb.OGRENILMIS_ONSEL.sapma)):
-        assert [round(d, 4) for d in ogrenilen] == list(kayitli)
+        assert list(ogrenilen) == pytest.approx(list(kayitli), abs=5e-4)
     assert all(sb.SAPMA_TABANI <= s <= sb.SAPMA_TAVANI and math.isfinite(s) for s in sb.OGRENILMIS_ONSEL.sapma)
 
 
