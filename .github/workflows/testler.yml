@@ -76,3 +76,47 @@ jobs:
 
       - name: pytest
         run: python -m pytest -q
+
+  # Firm-side image (Dockerfile.pilot): builds, and the score command runs with no network on a synthetic studio.
+  pilot-imaji:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build
+        run: docker build -t ritmeva-pilot -f Dockerfile.pilot .
+
+      - name: Synthetic studio files (backtest S6 generator, inside the image)
+        run: |
+          mkdir -p ornek && chmod 777 ornek
+          docker run --rm -i --network none -v "$PWD/ornek:/veri" --entrypoint python ritmeva-pilot - <<'EOF'
+          from datetime import datetime, timedelta
+          from zoneinfo import ZoneInfo
+          import numpy as np
+          from backtest.senaryolar import GOZLEM_GUN, S6_GIRIS_SON_KULLANMA, S6_PAKETLER, uret_s6
+          v = uret_s6(np.random.default_rng(1), 250)
+          baz = datetime(2026, 9, 30, tzinfo=ZoneInfo("Europe/Istanbul")) - timedelta(days=GOZLEM_GUN)
+          gun = lambda t: (baz + timedelta(days=float(t))).strftime("%d.%m.%Y")
+          with open("paketler.csv", "w", encoding="utf-8-sig") as f:
+              f.write("Üye No;Paket No;Paket Adı;Başlangıç Tarihi;Bitiş Tarihi;Seans Sayısı;Ücret;Durum\n")
+              for j, pk in enumerate(v.paketler):
+                  ad, tur, _, sure, hak, fiyat = S6_PAKETLER[pk.tur_no]
+                  bitis = pk.baslangic + (sure if tur == "sure" else S6_GIRIS_SON_KULLANMA)
+                  f.write(f"U{pk.uye:05d};K{j:06d};{ad};{gun(pk.baslangic)};{gun(bitis)};{hak or ''};{fiyat},00;\n")
+          with open("girisler.csv", "w", encoding="utf-8-sig") as f:
+              f.write("Üye No;Giriş Tarihi\n")
+              for i, z in enumerate(v.zamanlar):
+                  for t in z:
+                      f.write(f"U{i:05d};{(baz + timedelta(days=float(t))).strftime('%d.%m.%Y %H:%M')}\n")
+          EOF
+
+      - name: Score and pilot commands without network
+        run: |
+          docker run --rm --network none -v "$PWD/ornek:/veri" ritmeva-pilot servisler.skor --kaynak ornek \
+            --paketler paketler.csv --girisler girisler.csv --cikti skorlar.csv
+          docker run --rm --network none -v "$PWD/ornek:/veri" ritmeva-pilot servisler.pilot_dogrula --kaynak ornek \
+            --paketler paketler.csv --girisler girisler.csv
+          test "$(wc -l < ornek/skorlar.csv)" -gt 1
+          test -s ornek/raporlar/pilot/ornek/pilot-raporu.html
+          cmp ornek/skorlar.csv ornek/raporlar/pilot/ornek/skorlar.csv

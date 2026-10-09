@@ -103,6 +103,21 @@ def parametreden_teta(prm: BGNBDParametreleri) -> np.ndarray:
                      np.log(prm.a + prm.b)])
 
 
+@dataclass(frozen=True)
+class Onsel:
+    """Independent normal prior on θ = (ln m, ln r, logit μ, ln κ), all four directions (cold start, K81-K82).
+
+    Replaces the weak prior (log_onsel) when a business has too little data; learned from other businesses.
+    """
+    merkez: tuple[float, float, float, float]
+    sapma: tuple[float, float, float, float]
+
+    def log_yogunluk(self, teta) -> float:
+        """Log density without the constant."""
+        z = (np.asarray(teta, dtype=float) - np.asarray(self.merkez)) / np.asarray(self.sapma)
+        return float(-0.5 * np.sum(z * z))
+
+
 def log_onsel(teta) -> float:
     """Zayıf önselin log yoğunluğu (sabit hariç; K44, K45): yalnız ln κ = θ[3] ve ln r = θ[1]; m ve μ önselsiz."""
     return float(-0.5 * ((teta[3] - ONSEL_LN_KAPPA_MERKEZ) / ONSEL_LN_KAPPA_SAPMA) ** 2

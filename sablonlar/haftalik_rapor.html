@@ -92,6 +92,7 @@
   <h2>Önümüzdeki 45 günde yenilemesi en riskli paketler</h2>
   <p class="alt">{{ r.riskli_sayisi }} paketin yenilemesi riskli (olasılık %80'in altında) · riskteki para {{ para(r.riskli_toplam) }} · bugün itibarıyla{% if r.riskli_sayisi > tablo_satiri %} (ilk {{ tablo_satiri }} gösteriliyor){% endif %}</p>
   {% if r.eskimis %}<p class="eski">Olasılıklar ve açıklamalar {{ tarih(r.en_eski_hesaplama) }} verisiyle hesaplandı.</p>{% endif %}
+  {% if r.on_tahmin %}<p class="eski"><b>Ön tahmin:</b> işletmenizin verisi henüz az, olasılıklar diğer işletmelerden öğrenilen bilgiyle hesaplandı.</p>{% endif %}
   {% if not r.satir_sayisi %}<p class="bos">Önümüzdeki 45 günde biten paket yok.</p>
   {% elif not r.ogeler %}<p class="bos">Önümüzdeki 45 günde yenilemesi riskli paket yok.</p>
   {% else %}
@@ -116,6 +117,7 @@
   <h2>En değerli sessiz üyeler</h2>
   <p class="alt">Paketi devam ettiği hâlde aktif olma olasılığı %50'nin altında · {{ s.sayi }} üye · toplam riskteki para {{ para(s.toplam_riskteki_para) }}{% if s.satir_sayisi > tablo_satiri %} (ilk {{ tablo_satiri }} gösteriliyor){% endif %}</p>
   {% if s.eskimis %}<p class="eski">Olasılıklar ve açıklamalar {{ tarih(s.en_eski_hesaplama) }} verisiyle hesaplandı.</p>{% endif %}
+  {% if s.on_tahmin %}<p class="eski"><b>Ön tahmin:</b> işletmenizin verisi henüz az, olasılıklar diğer işletmelerden öğrenilen bilgiyle hesaplandı.</p>{% endif %}
   {% if s.ogeler %}
   <table>
     <thead><tr><th>Üye</th><th>Telefon</th><th>Paket</th><th>Son ziyaret</th><th class="sayi">Gelmediği gün</th>

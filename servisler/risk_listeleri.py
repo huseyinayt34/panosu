@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from analitik.aciklama import DUSUK_RISK_ESIGI, SESSIZ_ESIK, neden_riskli
 from models import Isletme, MusteriPaketi, YenilemeRiski, Ziyaret
 from servisler.finans_servisi import PANEL_UFUK_GUN
-from servisler.yenileme_servisi import _gozlem_sonu, isletme_bugun, sessiz_uyeler, yenileme_paneli
+from servisler.yenileme_servisi import _gozlem_sonu, isletme_bugun, on_tahmin_mi, sessiz_uyeler, yenileme_paneli
 
 TABLO_SATIRI = 10
 
@@ -39,6 +39,7 @@ class RiskListesi:
     riskli_toplam: Decimal
     dusuk_sayisi: int
     dusuk_toplam: Decimal
+    on_tahmin: bool                 # latest computation used the learned prior (too little data, K83)
 
 
 @dataclass(frozen=True)
@@ -114,7 +115,8 @@ def _liste(db: Session, bugun: date, tum_ogeler: list[dict], toplam: Decimal, sa
                        tumu=tumu, riskli_sayisi=len(riskliler),
                        riskli_toplam=sum((o["riskteki_para"] for o in riskliler), Decimal("0.00")),
                        dusuk_sayisi=len(dusukler),
-                       dusuk_toplam=sum((o["riskteki_para"] for o in dusukler), Decimal("0.00")))
+                       dusuk_toplam=sum((o["riskteki_para"] for o in dusukler), Decimal("0.00")),
+                       on_tahmin=on_tahmin_mi(db))
 
 
 def riskli_uyeler(db: Session, tumu: bool = False) -> RiskListesi:

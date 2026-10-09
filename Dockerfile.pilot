@@ -1,0 +1,27 @@
+# Firm-side image: pilot report and nightly score list without Python, a database or .env (K86-K88,
+# docs/adim-8a-tasarim.md). Build straight from GitHub, no clone needed:
+#   docker build -t ritmeva-pilot -f Dockerfile.pilot https://github.com/huseyinayt34/panosu.git
+# Run in the folder that holds the export files; --network none: the container has no network, data cannot leave.
+#   docker run --rm --network none -v "${PWD}:/veri" ritmeva-pilot servisler.skor --kaynak studyo --paketler paketler.csv --girisler girisler.csv
+FROM python:3.14-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
+
+# Only what the two commands import (no web app, no database driver). Pins equal requirements*.txt (test).
+RUN pip install --no-cache-dir numpy==2.5.2 scipy==1.18.1 Jinja2==3.1.6 MarkupSafe==3.0.3 tzdata==2026.3 \
+    openpyxl==3.1.5 et_xmlfile==2.0.0
+
+# Same source as the web image (.dockerignore keeps out .env, tests, veri/, raporlar/); unused modules are never
+# imported, so their packages are not needed.
+WORKDIR /app
+COPY . .
+
+RUN useradd --create-home --uid 10001 ritmeva
+USER ritmeva
+
+# Relative paths (input files, outputs) resolve inside the mounted folder.
+WORKDIR /veri
+ENTRYPOINT ["python", "-m"]
+CMD ["servisler.skor", "--help"]

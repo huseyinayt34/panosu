@@ -4,6 +4,7 @@
   <h2>Sessiz üyeler</h2>
   <p class="alt">Paketi devam ettiği hâlde aktif olma olasılığı %50'nin altında · {{ s.sayi }} üye · toplam riskteki para {{ para(s.toplam_riskteki_para) }}</p>
   {% if s.eskimis %}<p class="not">Olasılıklar ve açıklamalar {{ tarih(s.en_eski_hesaplama) }} verisiyle hesaplandı.</p>{% endif %}
+  {% if s.on_tahmin %}<p class="not"><b>Ön tahmin:</b> işletmenizin verisi henüz az, olasılıklar diğer işletmelerden öğrenilen bilgiyle hesaplandı. Veri biriktikçe kendi verinize dayanır.</p>{% endif %}
   {% if not s.ogeler %}
   <p class="bos">Sessiz üye yok.</p>
   {% else %}

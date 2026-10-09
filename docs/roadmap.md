@@ -19,7 +19,7 @@ below is a snapshot as of 2026-10-03; the current status lives in CLAUDE.md.
 | 7 | Panel: silent members, revenue and profit summary (expenses, break-even), weekly report (`docs/adim-7-tasarim.md`). For a past month the break-even gap uses the month average (K2, `docs/adim-9-tasarim.md`) | Done |
 | 4b | CSV/Excel import (`docs/adim-4b-tasarim.md`; does not depend on 8). Note: on import, check-in visits must have amount 0; otherwise package revenue is counted twice. | 4b-1 Done (CSV/Excel import core, command, export, round-trip test); 4b-2 real-data validation and 4b-3 web screen pending |
 | 8 | Real authentication + business sign-up: Argon2id + JWT, single-use refresh token, invite codes (`docs/adim-8-tasarim.md`). The live `panosu` migration awaits separate approval. | Done |
-| 8a | Cold-start mode (before 9; plan only): in a business with little history, MBG/NBD parameters start from a prior learned from other businesses or from synthetic data and are updated in a Bayesian way as the business's data arrives. During this period the panel shows predictions with the label 'ön tahmin' (preliminary estimate). | Planned |
+| 8a | Cold-start mode (before 9; plan only): in a business with little history, MBG/NBD parameters start from a prior learned from other businesses or from synthetic data and are updated in a Bayesian way as the business's data arrives. During this period the panel shows predictions with the label 'ön tahmin' (preliminary estimate). | Done 2026-10-10 (`docs/adim-8a-tasarim.md`: threshold 30 repeat members and 60 days, empirical Bayes prior from the 5 synthetic demo businesses, young-studio backtest, firm-side Docker image) |
 | 8b | Automatic calculation (before 9; plan only): the finance panel is recalculated instantly on every data entry, renewal risks automatically every night. (Nightly refresh for the demo was done in 9c; real businesses pending) | Planned |
 | 9 | Web panel (Jinja + HTMX, inside FastAPI; `docs/adim-9-tasarim.md`), live demo with panosu_demo | Done |
 | 10 | Consent, messaging, win-back measurement | Planned |
@@ -32,10 +32,10 @@ below is a snapshot as of 2026-10-03; the current status lives in CLAUDE.md.
 - Step 4b: AI-suggested CSV column mapping; extracting a table from a photo of the attendance book.
 - Step 10: messaging with control groups and uplift measurement; not disturbing the "sleeping dogs" (members who pay
   but rarely come); causal evidence of win-back.
-- Step 8a: hierarchical Bayesian priors across businesses.
+- Step 8a: full hierarchical Bayes across businesses (8a uses empirical Bayes; worth it once there are real businesses).
 - After step 11: Score API for software companies.
 - Integration guide for software firms (Turkish, firm-facing): `docs/entegrasyon.md`. The score command and the
-  Docker license package it describes as planned are not built yet.
+  firm-side Docker image (`Dockerfile.pilot`) are built.
 
 ## Research shelf (if time allows)
 - RFM/cohort, survival analysis (Kaplan-Meier, Cox), XGBoost + SHAP, campaign simulator / A-B power analysis.

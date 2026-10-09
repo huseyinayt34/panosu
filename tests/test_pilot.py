@@ -268,6 +268,27 @@ def test_skor_komutu_pilot_listesiyle_ayni_ve_surum_yazar(tmp_path, s6, capsys):
     assert cikti.read_bytes() == (pilot_cikti / "skorlar.csv").read_bytes()
 
 
+def test_genc_studyo_on_tahmin(tmp_path, capsys):
+    """Below the data threshold (K83): the list, every CSV row, the report and the command say "ön tahmin"."""
+    genc = _s6_dosyalari(20, 3, date(2026, 3, 31))
+    g = pilot.guncel(*_kayitlar(genc), IST)
+    assert g.on_tahmin and g.model_versiyonu == "mbgnbd-onsel-v1" and g.skorlar
+    assert {s.model_versiyonu for s in g.skorlar} == {"mbgnbd-onsel-v1"}
+    d = pilot.dogrula(*_kayitlar(genc), IST)
+    assert any("ön tahmin" in u for u in d.uyarilar)
+    cikti = _skor_komutu(tmp_path, genc)
+    satirlar = list(csv.reader(io.StringIO(cikti.read_text(encoding="utf-8-sig")), delimiter=";"))
+    assert {r[-1] for r in satirlar[1:]} == {"mbgnbd-onsel-v1"}
+    assert "ön tahmin" in capsys.readouterr().out
+    rapor = (_komut(tmp_path, genc) / "pilot-raporu.html").read_text(encoding="utf-8")
+    assert "<b>ön tahmindir</b>" in rapor
+
+
+def test_yeterli_veride_on_tahmin_notu_yok(s6):
+    g = pilot.guncel(*_kayitlar(s6), IST)
+    assert not g.on_tahmin and {s.model_versiyonu for s in g.skorlar} == {"mbgnbd-map-v3"}
+
+
 def test_skor_komutu_hatada_onceki_listeyi_korur(tmp_path, s6):
     cikti = _skor_komutu(tmp_path, s6)
     onceki = cikti.read_bytes()
@@ -318,3 +339,19 @@ def test_skorla_yenileme_hesapla_ile_ayni(admin_engine, oturum, iki_kiraci):
     pilot_degerleri = {s.paket.dis_kimlik: (s.p_hayatta_simdi, s.p_yenileme)
                        for s in pilot.skorla(ziyaretler, paketler, L, IST)}
     assert pilot_degerleri == db_degerleri
+
+
+def test_pilot_imaji_surumleri_requirements_ile_ayni():
+    """Dockerfile.pilot installs the same pinned versions as requirements*.txt (K87)."""
+    import re
+
+    sabit = {}
+    for ad in ("requirements.txt", "requirements-uretim.txt"):
+        for satir in (KOK / ad).read_text(encoding="utf-8").splitlines():
+            if "==" in satir and not satir.startswith("#"):
+                paket, surum = satir.split(";")[0].strip().split("==")
+                sabit[paket.lower().replace("_", "-")] = surum
+    imaj = dict((p.lower().replace("_", "-"), s) for p, s in re.findall(r"([A-Za-z0-9_.-]+)==([0-9][\w.]*)",
+                                                                         (KOK / "Dockerfile.pilot").read_text()))
+    assert set(imaj) == {"numpy", "scipy", "jinja2", "markupsafe", "tzdata", "openpyxl", "et-xmlfile"}
+    assert {p: sabit.get(p) for p in imaj} == imaj

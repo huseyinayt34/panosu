@@ -1,8 +1,8 @@
 """Yenileme riski servisi (Adım 5b). FastAPI'ye bağımlı değildir.
 
 Kiracı bağlamlı bir oturumla (RLS) işletmenin tamamlanmış ziyaretlerini ve aktif paketlerini okur, M3 (MBG/NBD)
-parametrelerini işletmenin tüm ziyaret geçmişiyle tahmin eder, her aktif paket için P(yenileme)'yi simüle eder ve
-`yenileme_riskleri`'ne yazar. Aynı gün + model için yeniden çalıştırma idempotenttir (ON CONFLICT ... DO UPDATE).
+parametrelerini işletmenin tüm ziyaret geçmişiyle tahmin eder (veri azsa öğrenilmiş önselle, 'ön tahmin', K83), her
+aktif paket için P(yenileme)'yi simüle eder ve `yenileme_riskleri`'ne yazar. Aynı gün + model için yeniden çalıştırma idempotenttir (ON CONFLICT ... DO UPDATE).
 M3 uyumu üye sırasından bağımsızdır (mbgnbd.fit girdiyi kanonik sıraya dizer); okuma sırası sonucu etkilemez.
 """
 
@@ -18,9 +18,9 @@ from sqlalchemy import func, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from analitik import mbgnbd
 from analitik.ozellikler import ozellik_cikar
-from analitik.yenileme import MODEL_VERSIYONU, yenileme_olasiligi
+from analitik.soguk_baslangic import ON_TAHMIN_VERSIYONU, uyum
+from analitik.yenileme import yenileme_olasiligi
 from models import Isletme, MusteriPaketi, YenilemeRiski, Ziyaret
 from servisler.paket_servisi import kalan_giris
 
@@ -41,6 +41,12 @@ def _gozlem_sonu(db: Session, hesaplama_tarihi: date) -> datetime:
     """Hesaplama gününün sonu (işletmenin yerel gece yarısı); bu ana kadarki ziyaretler kullanılır."""
     dilim = db.scalar(select(Isletme.saat_dilimi).where(Isletme.isletme_id == func.aktif_isletme()))
     return datetime.combine(hesaplama_tarihi + timedelta(days=1), time(0), tzinfo=ZoneInfo(dilim))
+
+
+def on_tahmin_mi(db: Session) -> bool:
+    """True if the business's latest renewal computation was a preliminary estimate (too little data, K83)."""
+    son = db.scalar(select(YenilemeRiski.model_versiyonu).order_by(YenilemeRiski.hesaplanma_zamani.desc()).limit(1))
+    return son == ON_TAHMIN_VERSIYONU
 
 
 def _olasilik(deger: float) -> Decimal:
@@ -65,7 +71,8 @@ def yenileme_hesapla(db: Session, hesaplama_tarihi: date | None = None) -> int:
     musteriler = list(ziyaretler)
     zamanlar = [np.array(ziyaretler[m]) for m in musteriler]
     oz = ozellik_cikar(zamanlar, zamanlar, 0.0)
-    prm = mbgnbd.fit(oz.x, oz.t_x, oz.T)
+    u = uyum(oz.x, oz.t_x, oz.T)
+    prm = u.prm
     sira = {m: i for i, m in enumerate(musteriler)}
 
     paketler = db.scalars(select(MusteriPaketi).where(MusteriPaketi.durum == "aktif")).all()
@@ -83,7 +90,7 @@ def yenileme_hesapla(db: Session, hesaplama_tarihi: date | None = None) -> int:
             "musteri_id": paket.musteri_id,
             "paket_id": paket.paket_id,
             "hesaplama_tarihi": hesaplama_tarihi,
-            "model_versiyonu": MODEL_VERSIYONU,
+            "model_versiyonu": u.model_versiyonu,
             "kalan_gun": kalan_gun if paket.tur == "sure" else None,
             "kalan_giris": kalan,
             "p_hayatta_simdi": _olasilik(sonuc.p_hayatta_simdi),

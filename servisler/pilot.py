@@ -24,11 +24,11 @@ from zoneinfo import ZoneInfo
 
 import numpy as np
 
-from analitik import mbgnbd
 from analitik.aciklama import Aciklama, neden_riskli
 from analitik.ozellikler import ozellik_cikar
 from analitik.riskteki_para import yenileme_riskteki_para
-from analitik.yenileme import MODEL_VERSIYONU, yenileme_olasiligi
+from analitik.soguk_baslangic import ASGARI_GECMIS_GUN, ASGARI_TEKRARLI_UYE, ON_TAHMIN_VERSIYONU, uyum
+from analitik.yenileme import yenileme_olasiligi
 from backtest.metrikler import auc as roc_auc
 from servisler.ice_aktarma import GirisKaydi, PaketKaydi
 
@@ -65,6 +65,7 @@ class Skor:
     kalan_giris: int | None
     son_21_gun_giris: int             # check-ins in (day - 21, day]; used by the baseline rule
     aciklama: Aciklama
+    model_versiyonu: str              # ON_TAHMIN_VERSIYONU when the data was below the threshold (K83)
 
 
 def _olasilik(deger: float) -> Decimal:
@@ -90,6 +91,12 @@ def veri_gunu(ziyaretler: dict[str, list[datetime]], dilim: ZoneInfo) -> date:
 def skorla(ziyaretler: dict[str, list[datetime]], paketler: list[PaketKaydi], gun: date,
            dilim: ZoneInfo) -> list[Skor]:
     """Scores `paketler` on `gun` using only check-ins up to the end of that local day."""
+    return _skorla(ziyaretler, paketler, gun, dilim)[0]
+
+
+def _skorla(ziyaretler: dict[str, list[datetime]], paketler: list[PaketKaydi], gun: date,
+            dilim: ZoneInfo) -> tuple[list[Skor], str]:
+    """skorla plus the model version of the fit (also when `paketler` is empty)."""
     son = datetime.combine(gun + timedelta(days=1), time(0), tzinfo=dilim)
     goreli = {u: np.array([(z - son).total_seconds() / _GUN_SANIYE for z in zs if z < son])
               for u, zs in ziyaretler.items()}
@@ -99,7 +106,8 @@ def skorla(ziyaretler: dict[str, list[datetime]], paketler: list[PaketKaydi], gu
     uyeler = list(goreli)
     zamanlar = [goreli[u] for u in uyeler]
     oz = ozellik_cikar(zamanlar, zamanlar, 0.0)
-    prm = mbgnbd.fit(oz.x, oz.t_x, oz.T)
+    model = uyum(oz.x, oz.t_x, oz.T)
+    prm = model.prm
     sira = {u: i for i, u in enumerate(uyeler)}
 
     skorlar = []
@@ -128,8 +136,9 @@ def skorla(ziyaretler: dict[str, list[datetime]], paketler: list[PaketKaydi], gu
             gun=gun, paket=pk, p_hayatta_simdi=p_h, p_yenileme=p_y,
             riskteki_para=yenileme_riskteki_para(p_y, pk.ucret),
             kalan_gun=kalan_gun if pk.tur == "sure" else None, kalan_giris=kalan_giris,
-            son_21_gun_giris=sum(1 for t in z if t > -KURAL_PENCERE_GUN), aciklama=aciklama))
-    return skorlar
+            son_21_gun_giris=sum(1 for t in z if t > -KURAL_PENCERE_GUN), aciklama=aciklama,
+            model_versiyonu=model.model_versiyonu))
+    return skorlar, model.model_versiyonu
 
 
 def _son_paketler(paketler: list[PaketKaydi], gun: date) -> dict[str, PaketKaydi]:
@@ -149,7 +158,11 @@ class GuncelListe:
     gun: date
     skorlar: list[Skor]               # sorted by riskteki_para desc
     donduruldu: int                   # frozen packages left out
-    model_versiyonu: str = MODEL_VERSIYONU
+    model_versiyonu: str              # ON_TAHMIN_VERSIYONU: below the data threshold, preliminary estimate (K83)
+
+    @property
+    def on_tahmin(self) -> bool:
+        return self.model_versiyonu == ON_TAHMIN_VERSIYONU
 
 
 def guncel(ziyaretler: dict[str, list[datetime]], paketler: list[PaketKaydi], dilim: ZoneInfo) -> GuncelListe:
@@ -157,9 +170,9 @@ def guncel(ziyaretler: dict[str, list[datetime]], paketler: list[PaketKaydi], di
     adaylar = [pk for pk in _son_paketler(paketler, L).values()
                if (pk.bitis_tarihi is None or pk.bitis_tarihi >= L) and pk.durum != "bitti"]
     aktif = [pk for pk in adaylar if pk.durum != "donduruldu"]
-    skorlar = sorted(skorla(ziyaretler, aktif, L, dilim),
-                     key=lambda s: (-s.riskteki_para, s.p_yenileme, s.paket.uye_kimlik))
-    return GuncelListe(gun=L, skorlar=skorlar, donduruldu=len(adaylar) - len(aktif))
+    skorlar, versiyon = _skorla(ziyaretler, aktif, L, dilim)
+    skorlar.sort(key=lambda s: (-s.riskteki_para, s.p_yenileme, s.paket.uye_kimlik))
+    return GuncelListe(gun=L, skorlar=skorlar, donduruldu=len(adaylar) - len(aktif), model_versiyonu=versiyon)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -260,6 +273,11 @@ def dogrula(ziyaretler: dict[str, list[datetime]], paketler: list[PaketKaydi], d
     if n >= DILIM_SAYISI:
         for parca in np.array_split(np.argsort(p, kind="mergesort"), DILIM_SAYISI):
             dilimler.append(Dilim(len(parca), float(p[parca].mean()), float(y[parca].mean())))
+    on_tahmin = {s.gun for s in skorlar if s.model_versiyonu == ON_TAHMIN_VERSIYONU}
+    if on_tahmin:
+        uyarilar.append(f"{len(on_tahmin)} kesim tarihinde veri azdı (en az {ASGARI_TEKRARLI_UYE} tekrar gelen üye ve "
+                        f"{ASGARI_GECMIS_GUN} günlük geçmiş gerekir); o tahminler diğer işletmelerden öğrenilmiş "
+                        "başlangıç bilgisiyle yapılmış ön tahminlerdir.")
     if n < AZ_ORNEK:
         uyarilar.append(f"Değerlendirilen paket sayısı {n}; {AZ_ORNEK}'un altında sonuçlar çok belirsizdir.")
     k = min(ILK_SIRA, n)

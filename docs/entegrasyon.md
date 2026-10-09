@@ -13,7 +13,8 @@ yoktur; söz değil, yol haritasıdır.
 | Dosya okuma kuralları (CSV/XLSX, sütun eşleştirme, tarih/para ayrıştırma) | Çalışıyor |
 | Pilot doğrulama komutu (`servisler.pilot_dogrula`): doğruluk raporu + bugünkü risk listesi, veritabanı yok | Çalışıyor |
 | Skor komutu (`servisler.skor`): yalnızca "dosya girer, risk listesi çıkar", düzenli çalıştırmaya uygun | Çalışıyor |
-| Firmanın sunucusuna kurulan Docker lisans paketi | **Planlanan** |
+| Docker paketi (`Dockerfile.pilot`): iki komut Python kurmadan, ağ bağlantısı kapalı çalışır | Çalışıyor |
+| Az verili (yeni açılmış) stüdyoda "ön tahmin" modu | Çalışıyor |
 
 ## 1. Akış
 
@@ -107,8 +108,8 @@ Dosyada isim, telefon ya da e-posta sütunu yoktur. Olsa bile okunmaz (Bölüm 3
 ## 3. Kişisel veri ve KVKK
 
 - **Ritmeva sizin sunucunuzda çalışacak şekilde tasarlandı.** Dosyalar sizin makinenizde okunur, sonuç sizin
-  makinenize yazılır; bugün bu, pilot ya da skor komutunu kendi makinenizde çalıştırdığınızda geçerlidir (sunucu paketi
-  planlanan, Bölüm 9). Bu yolda üye verisi bize gönderilmez. Veri sorumlusu (KVKK) sizsiniz ve öyle kalırsınız.
+  makinenize yazılır: pilot ya da skor komutunu kendi makinenizde çalıştırırsınız, isterseniz ağ bağlantısı kapalı
+  Docker paketiyle (Bölüm 8). Bu yolda üye verisi bize gönderilmez. Veri sorumlusu (KVKK) sizsiniz ve öyle kalırsınız.
 - **Dosyaları bize gönderirseniz** (pilotta ikinci yol, Bölüm 7): isimsiz ve kodları değiştirilmiş veri de, siz
   kodları geri eşleyebildiğiniz sürece KVKK'da kişisel veri sayılabilir (takma ad, anonim değildir). Bu durumda biz
   veri işleyen oluruz; bu yol ancak yazılı bir veri işleme sözleşmesiyle ve sizin hukuki değerlendirmenizle
@@ -156,12 +157,16 @@ Bilinmesi gerekenler:
 - Yenileme olasılığı henüz gerçek yenileme verisiyle kalibre edilmedi; sentetik senaryolarda doğrulandı. Bu yüzden
   olasılıklar ilk aşamada **sıralama** olarak okunmalıdır. Kalibrasyon ilk pilotların verisiyle yapılacak.
 - Az geçmişli üyelerde (birkaç giriş) tahmin belirsizdir; "Neden" cümlesi bunu açıkça yazar.
+- Stüdyonun **tamamının** verisi azsa (en az 30 üye ikinci kez gelmemişse ya da kayıtlar 60 günden kısaysa) model
+  stüdyonun verisine ek olarak önceden öğrenilmiş bir başlangıç bilgisi kullanır ve sonuç **ön tahmin** olarak
+  işaretlenir (Bölüm 6). Veri biriktikçe tahmin kendiliğinden stüdyonun kendi verisine dayanır.
 
 Modelin matematiği (MBG/NBD, MAP kestirimi, kesin yenileme formülü) ve sınırları: `docs/matematik-raporu.md`.
 
 ## 5. Yenileme sıklığı
 
-Model her çalıştırmada o stüdyonun **kendi verisinden** yeniden kurulur (stüdyolar arası veri paylaşılmaz). Ayrı bir
+Model her çalıştırmada o stüdyonun **kendi verisinden** yeniden kurulur (stüdyolar arası veri paylaşılmaz; ön
+tahmin modundaki başlangıç bilgisi bugün yalnızca sentetik demo verisinden öğrenilmiştir). Ayrı bir
 "eğitim" adımı ya da sizin saklamanız gereken bir model dosyası yoktur.
 
 Önerimiz: **günde bir kez**, gece, yeni dışa aktarmadan sonra çalıştırmak. Risk günler içinde değiştiği için (bir
@@ -183,7 +188,8 @@ python -m servisler.skor --kaynak stuvio --paketler paketler.csv --girisler giri
 
 ## 6. Model sürümü
 
-Model sürümü bir sürüm adıyla izlenir; şu anki sürüm **`mbgnbd-map-v3`**.
+Model sürümü bir sürüm adıyla izlenir; şu anki sürüm **`mbgnbd-map-v3`**. Stüdyonun verisi azken (Bölüm 4) sürüm
+adı **`mbgnbd-onsel-v1`** olur: bu satırlar ön tahmindir, ekranınızda böyle işaretlemenizi öneririz.
 
 - Sürüm adı, hesabın kendisi değiştiğinde değişir. Örnek: `v2`'den `v3`'e geçişte model aynı kaldı, yalnızca
   yenileme olasılığı yaklaşık (Monte Carlo) hesap yerine kesin formülle hesaplanmaya başladı; sonuçlar aynı,
@@ -225,15 +231,37 @@ Sentetik verideki sonuçlar örnek olsun diye (gerçek veri değil): 400 üyeli 
 0,66-0,81), basit kural 0,67; en riskli 10 paketin 10'u yenilemedi. Değerlendirilen paket 30'un altındaysa ya da
 geçmiş 1 yıldan kısaysa rapor uyarı verir.
 
-## 8. Lisans
+## 8. Docker paketi (Python kurmadan)
+
+Sunucunuzda yalnızca Docker yeterlidir; depoyu indirmeniz de gerekmez. Paket bir kez kurulur:
+
+```bash
+docker build -t ritmeva-pilot -f Dockerfile.pilot https://github.com/huseyinayt34/panosu.git
+```
+
+Dışa aktarma dosyalarının bulunduğu klasörde çalıştırılır. Çıktılar aynı klasöre yazılır:
+
+```bash
+# Gece listesi (Bölüm 5)
+docker run --rm --network none -v "${PWD}:/veri" ritmeva-pilot servisler.skor --kaynak stuvio --paketler paketler.csv --girisler girisler.csv --cikti skorlar.csv
+# Pilot raporu (Bölüm 7); çıktı: raporlar/pilot/stuvio/
+docker run --rm --network none -v "${PWD}:/veri" ritmeva-pilot servisler.pilot_dogrula --kaynak stuvio --paketler paketler.csv --girisler girisler.csv
+```
+
+- `--network none`: kapsayıcının (container) ağ bağlantısı yoktur; veri teknik olarak dışarı çıkamaz.
+- Komutlar ve seçenekleri Python ile çalıştırmakla aynıdır; çıkış kodları da aynıdır (Bölüm 5).
+- Linux'ta klasöre yazabilmesi için komuta `--user "$(id -u):$(id -g)"` ekleyin. Windows ve macOS'ta (Docker Desktop)
+  gerekmez; PowerShell'de `${PWD}` olduğu gibi çalışır.
+- Paket her değişiklikte otomatik testlerde kurulup ağsız çalıştırılarak denenir.
+
+## 9. Lisans
 
 Kaynak kodu okunabilir ve değerlendirme için kendi bilgisayarınızda çalıştırılabilir. Ticari kullanım (kendi
 ürününüzde, müşterileriniz için) yazılı izne bağlıdır; pilot da yazılı bir anlaşmayla yapılır. Ayrıntı:
 [LICENSE](../LICENSE). İletişim: ritmeva.iletisim@gmail.com
 
-## 9. Planlananlar (henüz yok)
+## 10. Planlananlar (henüz yok)
 
-- **Docker lisans paketi:** skor komutunu sizin sunucunuzda tek imajla çalıştırmak için; Python kurulumu gerekmez.
 - **Gerçek veriyle kalibrasyon:** ilk pilotların yenileme verisiyle yenileme olasılığının ayarlanması.
 
-Bu ikisi hazır olduğunda bu belge güncellenecektir.
+Hazır olduğunda bu belge güncellenecektir.

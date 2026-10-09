@@ -316,7 +316,7 @@ BUGUN = datetime.now(timezone(timedelta(hours=3))).date()          # işletme sa
 
 
 def _riskli_uye(admin_engine, kiraci, ad, *, hesaplama=BUGUN, ziyaret_gunleri=(), p_aktif="0.35", p_yen="0.28",
-                ucret="6000.00", bitis_gun=20, telefon=None):
+                ucret="6000.00", bitis_gun=20, telefon=None, model="test"):
     """Kiracıda üye + aktif süre paketi + yenileme riski kaydı (olasılıklar elle verilir). Ziyaretler yerel 12:00."""
     i, m, p = str(kiraci.isletme_id), str(uuid.uuid4()), str(uuid.uuid4())
     bitis = BUGUN + timedelta(days=bitis_gun)
@@ -331,9 +331,9 @@ def _riskli_uye(admin_engine, kiraci, ad, *, hesaplama=BUGUN, ziyaret_gunleri=()
                     {"p": p, "i": i, "m": m, "b": BUGUN - timedelta(days=60), "e": bitis, "u": ucret})
         con.execute(text("INSERT INTO yenileme_riskleri (isletme_id, musteri_id, paket_id, hesaplama_tarihi, "
                          "model_versiyonu, kalan_gun, p_hayatta_simdi, p_yenileme, yenileme_tutari) "
-                         "VALUES (:i, :m, :p, :t, 'test', :k, :ph, :py, :u)"),
-                    {"i": i, "m": m, "p": p, "t": hesaplama, "k": (bitis - hesaplama).days, "ph": p_aktif,
-                     "py": p_yen, "u": ucret})
+                         "VALUES (:i, :m, :p, :t, :v, :k, :ph, :py, :u)"),
+                    {"i": i, "m": m, "p": p, "t": hesaplama, "v": model, "k": (bitis - hesaplama).days,
+                     "ph": p_aktif, "py": p_yen, "u": ucret})
 
 
 def _sessizlik_gunleri(hesaplama):
@@ -368,6 +368,20 @@ def test_pano_tablolar_sahip(istemci, iki_kiraci, admin_engine):
     assert "Tümünü göster" not in y.text
     assert "Olasılıklar model tahminidir; gerçek yenileme verisiyle kalibre edilmemiştir." in y.text
     assert "Kâr / zarar" in y.text
+
+
+def test_pano_on_tahmin_notu(istemci, iki_kiraci, admin_engine):
+    """Preliminary-estimate note in both tables and the weekly report only when the latest run used the learned
+    prior (K83)."""
+    a, _ = iki_kiraci
+    _riskli_uye(admin_engine, a, "Ayşe Sessiz", ziyaret_gunleri=_sessizlik_gunleri(BUGUN))
+    _kiraci_cerezi(istemci, a)
+    assert "Ön tahmin:" not in istemci.get("/pano").text
+    _riskli_uye(admin_engine, a, "Ali Yeni", ziyaret_gunleri=_sessizlik_gunleri(BUGUN), model="mbgnbd-onsel-v1")
+    y = istemci.get("/pano")
+    for bolum in ("riskli", "sessiz"):
+        assert "<b>Ön tahmin:</b> işletmenizin verisi henüz az" in _bolum(y.text, bolum)
+    assert "<b>Ön tahmin:</b>" in istemci.get("/pano/rapor").text
 
 
 def test_pano_bos_tablolar(istemci, iki_kiraci):

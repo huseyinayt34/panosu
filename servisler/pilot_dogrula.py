@@ -160,7 +160,7 @@ def skorlar_csv(g: pilot.GuncelListe) -> str:
     return _csv([[s.paket.uye_kimlik, s.paket.dis_kimlik, s.paket.ad,
                   s.paket.bitis_tarihi.strftime("%d.%m.%Y") if s.paket.bitis_tarihi else "",
                   _sayi(s.kalan_gun), _sayi(s.kalan_giris), _sayi(s.p_hayatta_simdi), _sayi(s.p_yenileme),
-                  _sayi(s.riskteki_para), s.aciklama.cumle, g.gun.strftime("%d.%m.%Y"), g.model_versiyonu]
+                  _sayi(s.riskteki_para), s.aciklama.cumle, g.gun.strftime("%d.%m.%Y"), s.model_versiyonu]
                  for s in g.skorlar],
                 ["Üye No", "Paket No", "Paket Adı", "Bitiş Tarihi", "Kalan Gün", "Kalan Giriş", "Aktif Olasılığı",
                  "Yenileme Olasılığı", "Riskteki Para", "Neden", "Veri Günü", "Model Sürümü"])

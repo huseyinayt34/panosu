@@ -28,6 +28,11 @@ main.py → rotalar/ → (bagimliliklar.py, servisler/, semalar/) → models.py 
 - `sablonlar/`: Jinja2 HTML templates (weekly report). `sablonlar/web/`: web panel templates.
 - `statik/`: web panel static files (htmx.min.js 2.0.4, panel.css); served under `/statik`.
 - `Dockerfile`, `.dockerignore`: production image (python:3.14-slim, non-root user; Render builds the image, K28).
+- `Dockerfile.pilot`: firm-side image for `servisler.skor` and `servisler.pilot_dogrula` (no database, no network;
+  K86, `docs/adim-8a-tasarim.md`). CI job `pilot-imaji` builds and runs it.
+- `python -m backtest.soguk_baslangic ogren` relearns the cold-start prior from the 5 [DEMO] businesses (paste the
+  printed `OGRENILMIS_ONSEL` into `analitik/soguk_baslangic.py`; a test checks it); `... degerlendir` runs the
+  young-studio backtest (about 1 minute).
 - `requirements-uretim.txt`: runtime dependencies (with the `requirements.txt` versions); updated on a new runtime
   import.
 - `.github/workflows/`: `demo-tazele.yml` (nightly refresh of the live demo, K23) and `demo-kur.yml` (manual, full

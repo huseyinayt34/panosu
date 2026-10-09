@@ -514,8 +514,9 @@ Riskli üye listesinin sırası değişmedi.
 2. **Yenileme kalibre edilmedi.** "Hayattaysa yeniler" varsayımı davranış dışı nedenleri yok sayar (Bölüm 8.4).
    Gerçek yenileme verisi gelince kalibrasyon eklenecek (5c).
 3. **Önsel merkezleri sentetik veride seçildi.** Gerçek veride yeniden ayarlanmalı.
-4. **Asgari veri koruması yok.** Herkes tek ziyaretliyse veya geçmiş 1 günse model emin ama anlamsız cevap verir.
-   Eşikler (ör. "en az 30 gün ve 20 üye") karar bekliyor.
+4. **Asgari veri koruması (8a ile eklendi, 2026-10-10).** En az 30 üye ikinci kez gelmediyse ya da geçmiş 60 günden
+   kısaysa zayıf önselin yerine diğer işletmelerden öğrenilmiş önsel kullanılır ve sonuç "ön tahmin" diye işaretlenir.
+   Önsel bugün 5 sentetik demo işletmesinden öğrenildi. Ayrıntı: `docs/adim-8a-tasarim.md`.
 5. **Gelecek ziyaretleri fazla tahmin.** S5'te M3 gelecek ziyaretleri %11, S2'de seyrek gelenlerde %21 fazla
    tahmin etti. Yenileme olasılığı aynı eğilimi taşıyabilir.
 6. **Parametre belirsizliği yenileme olasılığına taşınmıyor.** Hesap tek bir MAP noktası kullanır; "parametrelerden de

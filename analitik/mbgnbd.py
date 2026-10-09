@@ -17,7 +17,7 @@ import numpy as np
 from scipy.special import betaln, gammaln
 
 from analitik.bgnbd import (
-    BGNBDParametreleri, _diziler, hayattaysa_beklenen_ziyaret, kanonik_sira, log_onsel, map_iki_baslangic,
+    BGNBDParametreleri, Onsel, _diziler, hayattaysa_beklenen_ziyaret, kanonik_sira, log_onsel, map_iki_baslangic,
     parametreden_teta, tetadan_parametre,
 )
 
@@ -40,24 +40,30 @@ def log_olabilirlik(prm: BGNBDParametreleri, x, t_x, T) -> float:
     return float(log_olabilirlik_bireysel(prm, x, t_x, T).sum())
 
 
-def fit(x, t_x, T, baslangic: BGNBDParametreleri | None = None) -> BGNBDParametreleri:
+def fit(x, t_x, T, baslangic: BGNBDParametreleri | None = None, onsel: Onsel | None = None) -> BGNBDParametreleri:
     """(r, α, a, b) MAP; bgnbd.fit ile aynı yapı (θ = (ln m, ln r, logit μ, ln κ), zayıf önsel, merkezi fark türevli
     L-BFGS-B, iki başlangıç, plato yedeği).
 
+    onsel verilirse zayıf önselin yerine o kullanılır ve ilk başlangıç onun merkezidir (cold start, K82).
     Girdi önce kanonik sıraya (x, t_x, T) dizilir: aynı veri hangi sırayla gelirse gelsin parametre bit bit aynıdır.
     """
     x, t_x, T = kanonik_sira(*_diziler(x, t_x, T))
     n = len(x)
     if n == 0:
         raise ValueError("MBG/NBD uyumu için en az bir müşteri gerekli")
-    if baslangic is None:
-        baslangic = BGNBDParametreleri(r=1.0, alfa=max(float(np.mean(T)), 1.0), a=1.0, b=1.0)
+    log_p = onsel.log_yogunluk if onsel is not None else log_onsel
+    if baslangic is not None:
+        baslangic_teta = parametreden_teta(baslangic)
+    elif onsel is not None:
+        baslangic_teta = np.array(onsel.merkez, dtype=float)
+    else:
+        baslangic_teta = parametreden_teta(BGNBDParametreleri(r=1.0, alfa=max(float(np.mean(T)), 1.0), a=1.0, b=1.0))
 
     def amac(teta):
-        deger = -(log_olabilirlik(tetadan_parametre(teta), x, t_x, T) + log_onsel(teta)) / n
+        deger = -(log_olabilirlik(tetadan_parametre(teta), x, t_x, T) + log_p(teta)) / n
         return deger if np.isfinite(deger) else 1e300
 
-    return tetadan_parametre(map_iki_baslangic(amac, parametreden_teta(baslangic), x, n, "MBG/NBD"))
+    return tetadan_parametre(map_iki_baslangic(amac, baslangic_teta, x, n, "MBG/NBD"))
 
 
 def p_hayatta(prm: BGNBDParametreleri, x, t_x, T) -> np.ndarray:

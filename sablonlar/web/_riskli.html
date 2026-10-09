@@ -4,6 +4,7 @@
   <h2>Önümüzdeki 45 günde paketi bitenler</h2>
   <p class="alt">{{ r.riskli_sayisi }} paketin yenilemesi riskli (olasılık %80'in altında) · riskteki para {{ para(r.riskli_toplam) }} · bugün itibarıyla</p>
   {% if r.eskimis %}<p class="not">Olasılıklar ve açıklamalar {{ tarih(r.en_eski_hesaplama) }} verisiyle hesaplandı.</p>{% endif %}
+  {% if r.on_tahmin %}<p class="not"><b>Ön tahmin:</b> işletmenizin verisi henüz az, olasılıklar diğer işletmelerden öğrenilen bilgiyle hesaplandı. Veri biriktikçe kendi verinize dayanır.</p>{% endif %}
   {% if not r.satir_sayisi %}
   <p class="bos">Önümüzdeki 45 günde biten paket yok.</p>
   {% else %}

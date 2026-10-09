@@ -117,6 +117,7 @@
   <h2>Bugünkü liste</h2>
   <p class="alt">{{ tarih(g.gun) }} itibarıyla {{ g.skorlar | length }} aktif paket puanlandı (skorlar.csv, riskteki paraya göre sıralı).
     Üye numaralarını kendi sisteminizde isimle eşleştirip arayabilirsiniz.{% if g.donduruldu %} Dondurulmuş {{ g.donduruldu }} paket listeye alınmadı.{% endif %}</p>
+  {% if g.on_tahmin %}<div class="uyari">Bugünkü liste bir <b>ön tahmindir</b>: stüdyonun verisi henüz az olduğu için model, diğer işletmelerden öğrenilmiş başlangıç bilgisiyle çalıştı. Veri biriktikçe tahmin kendi verinize dayanır.</div>{% endif %}
 
   <h2>Veri özeti</h2>
   <ul>

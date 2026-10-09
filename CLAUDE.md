@@ -45,7 +45,8 @@ main.py → rotalar/ → (bagimliliklar.py, servisler/, semalar/) → models.py 
   check request it). Landing page `web/tanitim.html` + `statik/tanitim.css`/`tanitim.js`; vendored three.js in
   `statik/vendor/`, self-hosted fonts in `statik/yazitipi/`, promo video and share image in `statik/medya/` (no CDN,
   K55, K74).
-- `Dockerfile`, `requirements-uretim.txt` (runtime deps; update on a new runtime import),
+- `Dockerfile`, `requirements-uretim.txt` (runtime deps; update on a new runtime import), `Dockerfile.pilot`
+  (firm-side pilot/score image, no network, K86),
   `.github/workflows/` (`demo-tazele.yml` nightly, `demo-kur.yml` manual with confirm word "KUR", `testler.yml`
   full pytest on every push to main and on PRs, throwaway PostgreSQL with trust auth).
 Module detail: `docs/commands.md` and the step docs `docs/adim-*.md`.
@@ -106,7 +107,7 @@ research shelf: `docs/roadmap.md`. Math decisions (model choice, assumptions) be
 | 6 | Backtest S0-S5 (`docs/backtest-sonuclari.md`) | Done |
 | 7 | Panel: silent members, revenue and profit, weekly report (`docs/adim-7-tasarim.md`) | Done |
 | 8 | Auth + business sign-up (`docs/adim-8-tasarim.md`); live `panosu` migration needs separate approval | Done |
-| 8a | Cold-start mode (prior learned from other businesses) | Planned |
+| 8a | Cold start: data guard, learned prior, "ön tahmin", firm-side Docker image (`docs/adim-8a-tasarim.md`) | Done |
 | 8b | Automatic recalculation for real businesses | Planned |
 | 9 | Web panel, Jinja + HTMX (`docs/adim-9-tasarim.md`) | Done |
 | 10 | Consent, messaging, win-back measurement | Planned |
@@ -120,8 +121,7 @@ research shelf: `docs/roadmap.md`. Math decisions (model choice, assumptions) be
 
 ## Open issues (Açık konular)
 - After the (μ, κ) fix (`docs/adim-mu-kappa-tasarim.md` section 4): tune prior centers (`analitik.bgnbd` ONSEL_*)
-  on real data in 4b-2; minimum-data guard (all single-visit or 1-day history gives confident but meaningless
-  output; thresholds are the owner's call); similar ridge in Gamma-Gamma (q → ∞, backtest only); full Bayes
+  on real data in 4b-2; relearn the cold-start prior from real businesses (K84, needs their consent); similar ridge in Gamma-Gamma (q → ∞, backtest only); full Bayes
   for parameter uncertainty in the renewal probability (Rao-Blackwell done: exact formula, K61).
 - Synthetic generator (low priority): in [DEMO] Butik Reformer 2% of members visit several times a day (up to 6.2),
   and 9 members have 22 same-second visit pairs (different dis_kimlik); import collapses them (K33). Fixing changes

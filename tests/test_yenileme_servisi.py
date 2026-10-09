@@ -117,6 +117,23 @@ def test_sonuc_fiziksel_satir_sirasindan_bagimsiz(admin_engine, kucuk_isletme):
     assert _p_hayatta(admin_engine, a.isletme_id) == ilk
 
 
+@pytest.mark.parametrize("esik, beklenen", [(1000, "mbgnbd-onsel-v1"), (1, "mbgnbd-map-v3")])
+def test_veri_esigi_model_surumunu_belirler(admin_engine, kucuk_isletme, oturum, monkeypatch, esik, beklenen):
+    """Below the data threshold the learned prior is used and the rows carry the preliminary version (K83)."""
+    from analitik import soguk_baslangic
+    from servisler.yenileme_servisi import on_tahmin_mi
+
+    monkeypatch.setattr(soguk_baslangic, "ASGARI_TEKRARLI_UYE", esik)
+    monkeypatch.setattr(soguk_baslangic, "ASGARI_GECMIS_GUN", 1)
+    a = kucuk_isletme
+    calistir("panosu_test", a.isletme_id, BUGUN)
+    with admin_engine.connect() as con:
+        surumler = con.execute(text("SELECT DISTINCT model_versiyonu FROM yenileme_riskleri WHERE isletme_id = :i"),
+                               {"i": str(a.isletme_id)}).scalars().all()
+    assert surumler == [beklenen]
+    assert on_tahmin_mi(oturum(a)) == (beklenen == "mbgnbd-onsel-v1")
+
+
 @pytest.mark.parametrize("ad", ["panosu", "", None, "panosu_demo_eski", "demo", "test"])
 def test_kilit_reddeder(ad):
     with pytest.raises(IzinsizVeritabani):

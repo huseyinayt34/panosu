@@ -19,6 +19,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from analitik.soguk_baslangic import ASGARI_GECMIS_GUN, ASGARI_TEKRARLI_UYE
 from servisler import pilot
 from servisler.ice_aktarma import dis_kaynak_olustur
 from servisler.pilot_dogrula import VARSAYILAN_DILIM, _hazirla, skorlar_csv
@@ -70,6 +71,9 @@ def main(argv: list[str] | None = None) -> None:
     gecikme = (datetime.now(dilim).date() - L).days
     print(f"\nVeri günü {L:%d.%m.%Y}; model {g.model_versiyonu}; {len(g.skorlar)} aktif paket skorlandı, "
           f"{g.donduruldu} dondurulmuş paket atlandı. Çıktı: {arg.cikti}")
+    if g.on_tahmin:
+        print(f"NOT: veri az (en az {ASGARI_TEKRARLI_UYE} tekrar gelen üye ve {ASGARI_GECMIS_GUN} günlük geçmiş "
+              "gerekir); liste diğer işletmelerden öğrenilmiş başlangıç bilgisiyle yapılmış bir ön tahmindir.")
     if gecikme > 2:
         print(f"UYARI: son giriş {gecikme} gün önce; dışa aktarma güncel mi?")
 
