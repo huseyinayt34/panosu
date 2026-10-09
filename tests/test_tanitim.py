@@ -15,7 +15,7 @@ from main import app
 from rotalar.web import ERISIM_CEREZI
 
 GITHUB_DEPOSU = "https://github.com/huseyinayt34/panosu"
-LINKEDIN_ADRESI = "https://www.linkedin.com/in/h%C3%BCseyin-aytekin-b9b97027a/"
+LINKEDIN_ADRESI = "https://www.linkedin.com/in/huseyinaytekin/"
 ILETISIM_EPOSTASI = "ritmeva.iletisim@gmail.com"
 CSS_URL = re.compile(r"""url\(\s*(["']?)(.*?)\1\s*\)""")
 
