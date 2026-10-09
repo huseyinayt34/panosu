@@ -113,9 +113,9 @@ p { margin: 0; }
 
 /* Marquee of the three questions */
 .ticker { border-block: 1px solid var(--line-soft); overflow: hidden; padding-block: 18px; background: var(--bg-deep); }
-.ticker .track { display: flex; width: max-content; gap: 48px; animation: slide 38s linear infinite; font-family: var(--display); font-size: 22px; color: var(--muted); }
-.ticker .track span { display: inline-flex; align-items: center; gap: 48px; white-space: nowrap; }
-.ticker .track span::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.ticker .track { display: flex; width: max-content; gap: 48px; animation: slide 76s linear infinite; font-family: var(--display); font-size: 22px; color: var(--muted); }
+.ticker .track span { display: inline-block; white-space: nowrap; }
+.ticker .track span::after { content: ""; display: inline-block; vertical-align: middle; margin-left: 48px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
 .ticker .track b { color: var(--fg-strong); font-weight: 700; }
 @keyframes slide { to { transform: translateX(-50%); } }
 
