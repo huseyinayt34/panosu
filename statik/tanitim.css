@@ -249,4 +249,64 @@ footer .row { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: s
   .giant span:nth-child(6) { animation-range: entry 30% cover 38%; } .giant span:nth-child(7) { animation-range: entry 36% cover 42%; }
   @keyframes up { from { transform: translateY(35%); opacity: .7; } to { transform: none; opacity: 1; } }
 }
+/* Gradient pass (2026-10-09): soft green-to-night transitions so the page reads warmer and less flat.
+   Colors only; layout and markup unchanged. Remove this block to return to the flat v5 look. */
+body {
+  background:
+    radial-gradient(1100px 620px at 88% -6%, rgba(52,195,165,.20), transparent 62%),
+    radial-gradient(900px 560px at -12% 34%, rgba(52,195,165,.09), transparent 60%),
+    radial-gradient(800px 520px at 110% 62%, rgba(245,165,74,.06), transparent 60%),
+    radial-gradient(1000px 600px at 20% 92%, rgba(52,195,165,.10), transparent 62%),
+    linear-gradient(180deg, #0b121d 0%, #0a1620 34%, #08141a 66%, #070c14 100%);
+}
+.hero::before { background: radial-gradient(closest-side, rgba(52,195,165,.26), rgba(52,195,165,.08) 45%, transparent 72%); }
+.hero h1 em { background: linear-gradient(90deg, #f5a54a, #ffcf8a 60%, #ffe2b8); -webkit-background-clip: text; background-clip: text; }
+
+.btn-primary { background: linear-gradient(135deg, #8debd3 0%, #34c3a5 48%, #1e9e86 100%); box-shadow: 0 8px 28px rgba(52,195,165,.32), inset 0 1px 0 rgba(255,255,255,.35); }
+.btn-primary:hover { background: linear-gradient(135deg, #a4f1dd 0%, #46cfb1 48%, #25ab92 100%); box-shadow: 0 12px 34px rgba(52,195,165,.42), inset 0 1px 0 rgba(255,255,255,.4); }
+
+.kicker { display: inline-block; padding: 6px 12px; border-radius: 999px; background: linear-gradient(90deg, rgba(52,195,165,.18), rgba(52,195,165,.04)); border: 1px solid rgba(52,195,165,.28); }
+.sec-head h2, .cta h2 { background: linear-gradient(180deg, #ffffff 30%, #b6efdf); -webkit-background-clip: text; background-clip: text; color: transparent; }
+section.block + section.block { border-top: 1px solid transparent; border-image: linear-gradient(90deg, transparent, rgba(52,195,165,.35), transparent) 1; }
+
+.ticker { background: linear-gradient(90deg, #070c14 0%, #0b2421 50%, #070c14 100%); border-block-color: rgba(52,195,165,.18); }
+
+/* Cards: dark glass with a green-to-amber gradient edge */
+.side, .q, .honest, .window {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(180deg, rgba(23,36,56,.92), rgba(13,22,34,.96)) padding-box,
+    linear-gradient(160deg, rgba(52,195,165,.45), rgba(34,48,74,.55) 42%, rgba(245,165,74,.22)) border-box;
+}
+.side.after {
+  background:
+    linear-gradient(180deg, rgba(20,52,50,.95), rgba(13,22,34,.96) 65%) padding-box,
+    linear-gradient(160deg, rgba(123,227,201,.7), rgba(52,195,165,.25) 50%, rgba(34,48,74,.5)) border-box;
+}
+.q:hover { box-shadow: 0 18px 50px -18px rgba(52,195,165,.35); }
+.q .eg { background: linear-gradient(180deg, #0a1420, #070c14); }
+.q .big.a { background: linear-gradient(90deg, #34c3a5, #8debd3); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.q .big.r { background: linear-gradient(90deg, #f5a54a, #ffcf8a); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.meter span i { background: linear-gradient(90deg, #ffcf8a, #f5a54a 55%, #ff7b6b); }
+
+.proof .n { background: linear-gradient(180deg, #ffffff 25%, #7be3c9); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.firm > div { border-top: 0; border-radius: 16px; background: linear-gradient(180deg, rgba(52,195,165,.10), transparent 70%); box-shadow: inset 0 2px 0 rgba(52,195,165,.45); }
+.flow span:first-child { background: linear-gradient(90deg, rgba(52,195,165,.22), rgba(52,195,165,.06)); }
+
+.cta .box {
+  border: 1px solid transparent;
+  background:
+    radial-gradient(90% 120% at 100% 0%, rgba(123,227,201,.28), transparent 55%) padding-box,
+    radial-gradient(80% 100% at 0% 100%, rgba(245,165,74,.12), transparent 60%) padding-box,
+    linear-gradient(135deg, #12302c 0%, #0f1d2c 55%, #0b121d 100%) padding-box,
+    linear-gradient(135deg, rgba(123,227,201,.6), rgba(34,48,74,.6) 50%, rgba(245,165,74,.35)) border-box;
+  box-shadow: 0 40px 120px -50px rgba(52,195,165,.45);
+}
+.giant { -webkit-text-stroke-color: rgba(52,195,165,.22); }
+
+/* Hero trust row: three verifiable facts, no logos or testimonials (none exist yet) */
+.trust { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 18px 0 0; padding: 0; font-size: 13.5px; color: var(--muted); }
+.trust li { padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(52,195,165,.22); background: linear-gradient(90deg, rgba(52,195,165,.10), rgba(255,255,255,.02)); }
+.trust b { color: var(--fg-strong); font-weight: 600; }
+
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation: none !important; transition: none !important; } }
